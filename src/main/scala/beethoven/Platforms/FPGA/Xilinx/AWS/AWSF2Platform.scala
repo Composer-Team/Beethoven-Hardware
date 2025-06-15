@@ -10,19 +10,19 @@ import chipsalliance.rocketchip.config._
 import os.Path
 
 object AWSF2Platform {
-  def check_if_setup(ip: String): Boolean = {
-    val res = os.proc("ssh", "ubuntu@" + ip, "ls", "~/aws-fpga").call()
+  def check_if_setup(ip: String, remoteUsername: String): Boolean = {
+    val res = os.proc("ssh", f"$remoteUsername@" + ip, "ls", "~/aws-fpga").call()
     res.exitCode == 0
   }
 
-  def initial_setup(ip: String): Unit = {
+  def initial_setup(ip: String, remoteUsername: String): Unit = {
     val croot = sys.env("BEETHOVEN_PATH")
-    os.proc("rsync", "-azr", f"$croot/bin", f"ubuntu@$ip:~/bin").call()
-    os.proc("ssh", f"ubuntu@$ip", "~/bin/aws/scripts/initial_setup.sh").call()
+    os.proc("rsync", "-azr", f"$croot/bin", f"$remoteUsername@$ip:~/bin").call()
+    os.proc("ssh", f"$remoteUsername@$ip", "~/bin/aws/scripts/initial_setup.sh").call()
   }
 }
 
-class AWSF2Platform extends
+class AWSF2Platform(val remoteUsername: String = "ubuntu") extends
   Platform with
   HasPostProccessorScript with
   PlatformHasSeparateDMA with
@@ -120,11 +120,11 @@ class AWSF2Platform extends
           try {
             println("Transfering...")
             // should be using the Ubuntu Xilinx Vivado 2024.1 image which has username ubunutu
-            os.proc("ssh", f"ubuntu@$in",
+            os.proc("ssh", f"$remoteUsername@$in",
               "rm", "-rf", "~/cl_beethoven_top/design/generated-src", "~/cl_beethoven_top/design", "~/cl_beethoven_top/generated-src", "&&",
               "mkdir", "-p", "~/cl_beethoven_top").call()
-            os.proc("rsync", "-avz", f"$gen_dir", f"ubuntu@$in:~/cl_beethoven_top/").call()
-            os.proc("ssh", f"ubuntu@$in",
+            os.proc("rsync", "-avz", f"$gen_dir", f"$remoteUsername@$in:~/cl_beethoven_top/").call()
+            os.proc("ssh", f"$remoteUsername@$in",
               "mkdir", "-p", "~/cl_beethoven_top/build/scripts/", "&&",
               "mkdir", "-p", "~/cl_beethoven_top/build/constraints", "&&",
               "mv", "~/cl_beethoven_top/generated-src", "~/cl_beethoven_top/design", "&&",
@@ -133,11 +133,11 @@ class AWSF2Platform extends
               // "cp", "~/aws-fpga/hdk/common/shell_stable/build/constraints/small_shell_level_1_fp_cl.xdc", "~/cl_beethoven_top/build/constraints/small_shell_cl_pnr_user.xdc", "&&",
               "touch", "~/cl_beethoven_top/build/constraints/cl_synth_user.xdc", "&&",
               "touch", "~/cl_beethoven_top/build/constraints/cl_timing_user.xdc").call()
-            os.proc("rsync", "-avz", (run_dir / "src_list.tcl").toString(), f"ubuntu@$in:~/cl_beethoven_top/design/").call()
+            os.proc("rsync", "-avz", (run_dir / "src_list.tcl").toString(), f"$remoteUsername@$in:~/cl_beethoven_top/design/").call()
             os.proc("rsync", "-avz", (BeethovenBuild.top_build_dir / "synth_cl_beethoven_top.tcl").toString(), f"ubuntu@$in:~/cl_beethoven_top/build/scripts/").call()
             os.proc("rsync", "-avz", (BeethovenBuild.top_build_dir / "user_constraints.xdc").toString(), f"ubuntu@$in:~/cl_beethoven_top/build/scripts/").call()
             val dst_file = "~/cl_beethoven_top/build/constraints/small_shell_cl_pnr_user.xdc"
-            os.proc("ssh", f"ubuntu@$in", 
+            os.proc("ssh", f"$remoteUsername@$in", 
               f"cat ~/aws-fpga/hdk/common/shell_stable/build/constraints/small_shell_level_1_fp_cl.xdc > $dst_file &&" +
               f"cat ~/cl_beethoven_top/build/scripts/user_constraints.xdc >> $dst_file").call()
           } catch {
@@ -148,8 +148,8 @@ class AWSF2Platform extends
               fail = true
           }
         }
-        if (!check_if_setup(in)) {
-          initial_setup(in)
+        if (!check_if_setup(in, remoteUsername)) {
+          initial_setup(in, remoteUsername)
         }
       }
     }
