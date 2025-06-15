@@ -26,7 +26,7 @@ object GrayCounter {
       if (b.getWidth == 1) acc ^ b
       else h(b.tail(1), acc ^ b)
     }
-    h(a, 0.U(a.getWidth))
+    h(a, 0.U(a.getWidth.W))
   }
 
   def toGray(a: UInt): UInt = a ^ a.tail(1)
