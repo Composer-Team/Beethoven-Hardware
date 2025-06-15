@@ -163,7 +163,9 @@ class SequentialWriter(userBytes: Int,
       idle := false.B
       val choppedAddr = (io.req.bits.addr >> log2Up(fabricBeatBytes)).asUInt
       expectedNumBeats := io.req.bits.len >> CLog2Up(userBytes)
-      assert(io.req.bits.len(CLog2Up(userBytes)-1, 0) === 0.U, "Writer: can't write less than channel width ")
+      if (userBytes > 1) {
+        assert(io.req.bits.len(CLog2Up(userBytes)-1, 0) === 0.U, "Writer: can't write less than channel width ")
+      }
       req_addr := choppedAddr
       burst_progress_count := 0.U
     }
