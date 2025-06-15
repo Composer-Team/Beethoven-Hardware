@@ -134,8 +134,8 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu") extends
               "touch", "~/cl_beethoven_top/build/constraints/cl_synth_user.xdc", "&&",
               "touch", "~/cl_beethoven_top/build/constraints/cl_timing_user.xdc").call()
             os.proc("rsync", "-avz", (run_dir / "src_list.tcl").toString(), f"$remoteUsername@$in:~/cl_beethoven_top/design/").call()
-            os.proc("rsync", "-avz", (BeethovenBuild.top_build_dir / "synth_cl_beethoven_top.tcl").toString(), f"ubuntu@$in:~/cl_beethoven_top/build/scripts/").call()
-            os.proc("rsync", "-avz", (BeethovenBuild.top_build_dir / "user_constraints.xdc").toString(), f"ubuntu@$in:~/cl_beethoven_top/build/scripts/").call()
+            os.proc("rsync", "-avz", (BeethovenBuild.top_build_dir / "synth_cl_beethoven_top.tcl").toString(), f"$remoteUsername@$in:~/cl_beethoven_top/build/scripts/").call()
+            os.proc("rsync", "-avz", (BeethovenBuild.top_build_dir / "user_constraints.xdc").toString(), f"$remoteUsername@$in:~/cl_beethoven_top/build/scripts/").call()
             val dst_file = "~/cl_beethoven_top/build/constraints/small_shell_cl_pnr_user.xdc"
             os.proc("ssh", f"$remoteUsername@$in", 
               f"cat ~/aws-fpga/hdk/common/shell_stable/build/constraints/small_shell_level_1_fp_cl.xdc > $dst_file &&" +
