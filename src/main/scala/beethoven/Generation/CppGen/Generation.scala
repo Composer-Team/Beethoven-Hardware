@@ -22,7 +22,7 @@ object Generation {
     val acc = p(AcceleratorSystems)
     // we might have multiple address spaces...
 
-    val actualChannels = if (top.AXI_MEM.isDefined) platform.memoryNChannels else 0
+    val actualChannels = platform.memoryNChannels
     val (allocator, addrBits) = {
       (
         s"""
@@ -72,8 +72,8 @@ object Generation {
            |static const uint64_t addrMask = 0x${addrSet.mask.toLong.toHexString};
            |""".stripMargin
         , if (platform.isInstanceOf[PlatformHasSeparateDMA] && p(BuildModeKey) != Simulation) "#define BEETHOVEN_HAS_DMA" else "", {
-        if (platform.memoryNChannels > 0 && top.AXI_MEM.isDefined) {
-          val idDtype = getVerilatorDtype(top.AXI_MEM.get(0).in(0)._1.ar.bits.id.getWidth)
+        if (platform.memoryNChannels > 0) {
+          val idDtype = getVerilatorDtype(platform.extMem.master.idBits)
           f"""
              |#ifdef SIM
              |${if (platform.extMem.master.beatBytes < 8) "#define SIM_SMALL_MEM" else ""}
@@ -140,7 +140,7 @@ object Generation {
          |// MMIO address + field offsets
          |static const uint8_t system_id_bits = $SystemIDLengthKey;
          |static const uint8_t core_id_bits = $CoreIDLengthKey;
-         |static const beethoven::beethoven_pack_info pack_cfg(system_id_bits, core_id_bits);
+         |extern beethoven::beethoven_pack_info pack_cfg;
          |$mmio_addr
          |// IDs to access systems directly through RoCC interface
          |$system_ids
@@ -161,6 +161,7 @@ object Generation {
       f"""
          |#include "beethoven_hardware.h"
          |
+         |beethoven::beethoven_pack_info pack_cfg(system_id_bits, core_id_bits);
          |$commandDefinitions
          |""".stripMargin)
     src.close()

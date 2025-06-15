@@ -1,9 +1,10 @@
-package beethoven.common
+package beethoven
 
 import chipsalliance.rocketchip.config.Parameters
 import chisel3._
 import chisel3.util._
-import beethoven.BeethovenParams.{CoreIDLengthKey, SystemIDLengthKey}
+import BeethovenParams.{CoreIDLengthKey, SystemIDLengthKey}
+import beethoven.common.hasAccessibleUserSubRegions
 import freechips.rocketchip.tile.XLen
 
 import scala.language.experimental.macros

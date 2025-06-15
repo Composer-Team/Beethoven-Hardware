@@ -10,7 +10,8 @@ case class SynthScript(projectName: String,
                        verilog_file: String = "beethoven.v",
                        top_module: String = "BeethovenTop",
                        setup_ssp: String = "KriaSetup.ssp",
-                       precompile_dependencies: Seq[String] = Seq.empty[String]) {
+                       precompile_dependencies: Seq[String] = Seq.empty[String],
+                       extra_arguments: Map[String, String] = Map()) {
   val engine = new TemplateEngine
   engine.resourceLoader = (uri: String) => {
     val text = os.read(os.resource / "beethoven" / "FPGA" / uri)
@@ -24,7 +25,7 @@ case class SynthScript(projectName: String,
     "verilog_file" -> verilog_file,
     "top_module" -> top_module,
     "clock_rate" -> clock_rate
-  )
+  ) ++ extra_arguments
   lazy val setup = engine.layout(setup_ssp, environment)
   lazy val ip_script = precompile_dependencies.mkString("\n")
   lazy val run = engine.layout("synth.ssp", environment)

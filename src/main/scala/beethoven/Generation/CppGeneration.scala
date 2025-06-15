@@ -1,7 +1,7 @@
 package beethoven.Generation
 
 import chisel3._
-import beethoven.common._
+import beethoven._
 
 object CppGeneration {
 

@@ -1,6 +1,5 @@
 package beethoven.Systems
 
-import beethoven.CustomIO
 import chipsalliance.rocketchip.config.Parameters
 import chisel3._
 import chisel3.experimental.{FixedPoint, Interval}
@@ -8,6 +7,7 @@ import chisel3.util._
 import beethoven.Generation.CppGeneration
 import beethoven.Protocol.RoCC.RoccExchange
 import beethoven.common._
+import beethoven._
 
 class BeethovenCommandBundler[T1 <: AccelCommand, T2 <: AccelResponse](bundleIn: T1,
                                                                        bundleOut: T2,

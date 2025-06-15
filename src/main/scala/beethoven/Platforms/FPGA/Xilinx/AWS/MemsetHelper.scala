@@ -1,10 +1,10 @@
-package beethoven.Platforms.FPGA.Xilinx.F2
+package beethoven.Platforms.FPGA.Xilinx.AWS
 
-import chisel3._
-import chisel3.util._
 import beethoven._
 import beethoven.common._
 import chipsalliance.rocketchip.config.Parameters
+import chisel3._
+import chisel3.util._
 
 class MemsetHelper(dataWidthBytes: Int)(implicit p: Parameters) extends AcceleratorCore {
   require(isPow2(dataWidthBytes), "data payload must be power two of bytes")
@@ -43,7 +43,6 @@ class MemsetHelper(dataWidthBytes: Int)(implicit p: Parameters) extends Accelera
     state === s_idle
   }
 }
-
 
 class MemsetHelperConfig(payloadWidthBytes: Int) extends AcceleratorSystemConfig(
   nCores = 1,

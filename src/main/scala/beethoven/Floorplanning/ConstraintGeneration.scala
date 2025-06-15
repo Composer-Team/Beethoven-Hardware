@@ -1,5 +1,6 @@
 package beethoven.Floorplanning
 
+import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF1Platform
 import chipsalliance.rocketchip.config.Parameters
 import beethoven.Platforms._
 import beethoven._
@@ -15,10 +16,9 @@ object ConstraintGeneration {
     slrMappings = (moduleName, slr) :: slrMappings
   }
 
-  def writeConstraints()(implicit p: Parameters): Unit = {
+  def writeConstraints(outPath: os.Path)(implicit p: Parameters): Unit = {
     p(PlatformKey).platformType match {
       case PlatformType.FPGA =>
-        val outPath = BeethovenBuild.top_build_dir / "user_constraints.xdc"
         if (platform.physicalDevices.length == 1) {
           os.write.over(outPath, "")
           return

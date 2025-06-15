@@ -1,13 +1,14 @@
 package beethoven
 
+import beethoven.AcceleratorCore._
+import beethoven.BeethovenParams.CoreIDLengthKey
+import beethoven.IntraCoreMemoryPortInConfig._
 import beethoven.MemoryStreams._
-import BeethovenParams.CoreIDLengthKey
-import IntraCoreMemoryPortInConfig._
-import beethoven.AcceleratorCore.{commandExpectsResponse, systemOpCodeMap}
 import beethoven.Protocol.RoCC._
 import beethoven.Protocol.tilelink.MultiBeatCommandEmitter
-import beethoven.Systems.{AcceleratorSystem, BeethovenCommandBundler, getCommMemAddress, getCommMemSpaceBits}
+import beethoven.Systems._
 import beethoven.common._
+import beethoven._
 import chipsalliance.rocketchip.config._
 import chisel3._
 import chisel3.util._

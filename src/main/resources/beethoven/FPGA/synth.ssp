@@ -16,6 +16,8 @@
 # SSP stuff
 <%@ val output_dir: String %>
 
+set_param synth.elaboration.rodinMoreOptions "rt::set_parameter var_size_limit 4194304"
+
 update_compile_order -fileset sources_1
 update_module_reference design_1_top_0
 set_property STEPS.SYNTH_DESIGN.ARGS.RETIMING true [get_runs synth_1]

@@ -1,6 +1,6 @@
 package beethoven.Generation.CPP
 
-import beethoven.AcceleratorSystems
+import beethoven._
 import chipsalliance.rocketchip.config.Parameters
 import beethoven.common._
 import chisel3._

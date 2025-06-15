@@ -6,6 +6,7 @@ import chipsalliance.rocketchip.config.Parameters
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.tilelink.{TLBundle, TLBundleA, TLEdgeOut}
+import os.read.channel
 
 /**
  * All user-facing memory endpoints need to guarantee storage. This reader implementation does not guarantee storage
@@ -52,12 +53,12 @@ class LightweightReader_small(val dWidth: Int,
   assert(dWidth <= fabricBits)
   io.channel.in_progress := channelBeatsToPerform =/= 0.U
 
-  require(channelBytes < fabricBytes, "Channel width must be less than fabric width")
+  require(channelBytes <= fabricBytes, f"Channel width (${channelBytes}) must be less than fabric width (${fabricBytes})")
   io.channel.data.valid := tl_out.d.valid
   val data_split = splitIntoChunks(tl_out.d.bits.data, channelBytes * 8)
   io.channel.data.bits := data_split(fabricBeatCtr)
   val drain_fabric = channelBeatsToPerform === 0.U
-  tl_out.d.ready := fabricBeatCtr === (beatPerFabricDat - 1).U || drain_fabric
+  tl_out.d.ready := (io.channel.data.ready && fabricBeatCtr === (beatPerFabricDat - 1).U) || drain_fabric
 
   when(!drain_fabric && io.channel.data.fire) {
     channelBeatsToPerform := channelBeatsToPerform - 1.U

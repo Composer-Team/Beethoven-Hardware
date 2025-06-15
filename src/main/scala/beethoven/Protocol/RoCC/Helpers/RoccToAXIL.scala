@@ -3,7 +3,7 @@ package beethoven.Protocol.RoCC.Helpers
 import chipsalliance.rocketchip.config._
 import chisel3.util._
 import chisel3._
-import beethoven.common.AccelRoccResponse
+import beethoven._
 
 class RoccToAXIL(implicit val p: Parameters) extends Module {
 

@@ -112,6 +112,7 @@ abstract class Platform {
     assert(physicalInterfaces.exists(_.isInstanceOf[PhysicalMemoryInterface]),
       "Platform must have at least one memory interface")
     assert(physicalDevices.nonEmpty, "Platform must have at least one device")
+    assert(physicalInterfaces.count(_.isInstanceOf[PhysicalMemoryInterface]) == memoryNChannels)
   }
 
   def getConnectivityFromDeviceID(id: Int): List[Int] = {

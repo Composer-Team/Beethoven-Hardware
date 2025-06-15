@@ -1,10 +1,10 @@
-package beethoven
+package beethoven.Platforms.FPGA.Xilinx.AWS
 
-import chipsalliance.rocketchip.config._
-import beethoven.Generation._
 import beethoven.Platforms.FPGA.Xilinx.Templates.SynthScript
 import beethoven.Platforms.FPGA.Xilinx.getTclMacros
 import beethoven.Platforms._
+import beethoven.{BeethovenBuild, BuildMode, U200Platform}
+import chipsalliance.rocketchip.config._
 import os.Path
 
 object AWSF1Platform {
@@ -59,7 +59,6 @@ class AWSF1Platform(memoryNChannels: Int,
       os.walk(BeethovenBuild.top_build_dir, followLinks=false, maxDepth = 1).foreach(
         p =>
           if (p.last.endsWith(".cc") || p.last.endsWith(".h") || p.last.endsWith(".xdc")) {
-//            println("copying " + p + " to " + gen_dir / p.last)
             os.copy.over(p, gen_dir / p.last)
           }
       )

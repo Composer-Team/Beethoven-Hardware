@@ -1,6 +1,5 @@
 package beethoven
 
-
 /**
  * Read Channel group
  *

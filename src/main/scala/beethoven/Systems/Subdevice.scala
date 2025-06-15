@@ -3,8 +3,8 @@ package beethoven.Systems
 import beethoven.Floorplanning.{DeviceContext, ResetBridge}
 import beethoven.Protocol.RoCC.{RoccBuffer, RoccFanout, RoccIdentityNode}
 import beethoven.Protocol.tilelink.TLSupportChecker
-import beethoven.common.Misc
 import beethoven._
+import beethoven.common.Misc
 import chipsalliance.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import freechips.rocketchip.tilelink.TLNode

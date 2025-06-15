@@ -1,4 +1,4 @@
-package beethoven.Platforms.FPGA.Xilinx.F2
+package beethoven.Platforms.FPGA.Xilinx.AWS
 
 import os.Path
 

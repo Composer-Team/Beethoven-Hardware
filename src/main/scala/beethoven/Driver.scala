@@ -5,13 +5,12 @@ import beethoven.Floorplanning.ConstraintGeneration
 import beethoven.Generation.Annotators.AnnotateXilinxInterface.XilinxInterface
 import beethoven.Generation.Annotators.{CrossBoundaryDisable, WalkPath}
 import beethoven.Generation.{Annotators, vcs}
+import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF1Platform
 import beethoven.Platforms._
-import chipsalliance.rocketchip.config._
 import firrtl._
 import firrtl.options.PhaseManager.PhaseDependency
 import firrtl.options._
 import firrtl.stage.RunFirrtlTransformAnnotation
-import firrtl.transforms.{NoConstantPropagationAnnotation, NoDCEAnnotation}
 import freechips.rocketchip.stage._
 import os._
 
@@ -79,6 +78,8 @@ object BeethovenBuild {
     if (matcher.find()) matcher.group(0).split("=")(1).strip()
     else throw new Exception(errorNoCR)
   }
+
+  val IP_DIR = os.pwd / "ips"
 
   private val beethovenGenDir: String =
     beethovenRoot() + "/build/"

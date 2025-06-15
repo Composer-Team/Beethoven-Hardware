@@ -1,6 +1,7 @@
 package basic
 
-import beethoven.Platforms.FPGA.Xilinx.F2.AWSF2Platform
+import beethoven.{AcceleratorConfig, AcceleratorSystemConfig, ReadChannelConfig, WriteChannelConfig}
+import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2Platform
 import chisel3._
 import chisel3.util._
 import beethoven._
@@ -92,7 +93,7 @@ class VectorAddCore()(implicit p: Parameters) extends AcceleratorCore {
 
 class VecAddConfig extends AcceleratorConfig(
   AcceleratorSystemConfig(
-    nCores = 1,
+    nCores = 12,
     name = "myVectorAdd",
     moduleConstructor = ModuleBuilder(p => new VectorAddCore()(p)),
     memoryChannelConfig = List(
@@ -104,5 +105,5 @@ class VecAddConfig extends AcceleratorConfig(
 )
 
 object VectorAddConfig extends BeethovenBuild(new VecAddConfig,
-  buildMode = BuildMode.Simulation,
+  buildMode = BuildMode.Synthesis,
   platform = new AWSF2Platform)

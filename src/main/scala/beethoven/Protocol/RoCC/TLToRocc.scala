@@ -1,7 +1,7 @@
 package beethoven.Protocol.RoCC
 
 import beethoven.Generation._
-import beethoven.common.AccelRoccCommand
+import beethoven._
 import chipsalliance.rocketchip.config.Parameters
 import chisel3.util._
 import chisel3._

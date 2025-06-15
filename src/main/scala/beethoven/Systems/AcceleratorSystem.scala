@@ -1,8 +1,8 @@
 package beethoven.Systems
 
+import beethoven._
 import beethoven.Floorplanning.LazyModuleWithSLRs.LazyModuleWithFloorplan
 import chipsalliance.rocketchip.config._
-import beethoven._
 import beethoven.MemoryStreams._
 import beethoven.Protocol.RoCC._
 import beethoven.Protocol.tilelink.TLSlave.{TLSlaveBuffer, TLSlaveBufferedBroadcast, TLSlaveIdentityNode, TLSlaveNode, TLSlaveXbar, TLToTLSlave}

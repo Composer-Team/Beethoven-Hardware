@@ -1,5 +1,6 @@
 package beethoven
 
+import beethoven._
 import beethoven.Floorplanning.DeviceContext
 import beethoven.Floorplanning.LazyModuleWithSLRs.LazyModuleWithFloorplan
 import beethoven.Protocol.RoCC.{RoccBuffer, RoccCompositeXbar, RoccFanin, RoccFanout, RoccIdentityNode, RoccNode}

@@ -1,10 +1,10 @@
 package beethoven.MemoryStreams.Readers
 
+import beethoven._
 import beethoven.MemoryStreams.RAM.SyncReadMemMem
-import beethoven.MemoryStreams.{Memory}
+import beethoven.MemoryStreams.Memory
 import beethoven.Platforms._
 import beethoven.common.{CLog2Up, ShiftReg}
-import beethoven.{ChannelTransactionBundle, platform}
 import chipsalliance.rocketchip.config._
 import chisel3._
 import chisel3.util._

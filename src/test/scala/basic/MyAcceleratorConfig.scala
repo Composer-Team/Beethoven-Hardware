@@ -1,7 +1,9 @@
 package basic
 
-import beethoven.Platforms.FPGA.Xilinx.F2.{AWSF2Platform, DMAHelperConfig, MemsetHelper, MemsetHelperConfig}
+import beethoven.{AcceleratorConfig, AcceleratorSystemConfig, ReadChannelConfig, WriteChannelConfig}
+import beethoven.Platforms.FPGA.Xilinx.AWS.{AWSF2Platform, DMAHelperConfig, MemsetHelper, MemsetHelperConfig}
 import beethoven._
+import chisel3._
 
 class MyAcceleratorConfig extends AcceleratorConfig(List(
   AcceleratorSystemConfig(
@@ -15,4 +17,8 @@ class MyAcceleratorConfig extends AcceleratorConfig(List(
 
 object MyAcceleratorKria extends BeethovenBuild(new MyAcceleratorConfig,
   buildMode = BuildMode.Simulation,
-  platform = new AWSF2Platform)
+  platform = new KriaPlatform())
+
+object MyAcceleratorKriaClocks extends BeethovenBuild(new MyAcceleratorConfig,
+  buildMode = BuildMode.Synthesis,
+  platform = new Kria2Platform())

@@ -5,14 +5,14 @@ import chipsalliance.rocketchip.config._
 import chisel3._
 import chisel3.util._
 import beethoven.Floorplanning.{ConstraintGeneration, LazyModuleWithSLRs, ResetBridge}
-import beethoven.{BuildMode, _}
+import beethoven._
 import beethoven.Systems.BeethovenTop._
 import beethoven.Platforms._
-import beethoven.Protocol.AXI.AXI4Compat
-import beethoven.Protocol.FrontBus.{DMANodeKey, DebugCacheProtSignalKey, OptionalPassKey, RoccNodeKey}
-import beethoven.Protocol.RoCC.{RoccNode, TLToRocc}
+import beethoven.Protocol.AXI.{AXI4Compat, TieOff}
+import beethoven.Protocol.FrontBus._
+import beethoven.Protocol.RoCC._
 import beethoven.Protocol.tilelink.{TLRWFilter, TLSourceShrinkerDynamicBlocking, TLSupportChecker, TLToAXI4SRW}
-import beethoven.common.CLog2Up
+import beethoven.common._
 import freechips.rocketchip.amba.axi4._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.subsystem._
@@ -21,7 +21,6 @@ import freechips.rocketchip.tilelink._
 
 import scala.annotation.tailrec
 import scala.language.implicitConversions
-
 
 object BeethovenTop {
   /**
@@ -64,14 +63,9 @@ object BeethovenTop {
 }
 
 class BeethovenTop(implicit p: Parameters) extends LazyModule {
-  private val externalMemParams: MemoryPortParams = platform.extMem
-  private val nMemChannels = externalMemParams.nMemoryChannels
-  private val device = new MemoryDevice
-
   // AXI-L Port - commands come through here
   val front_bus_config = platform.frontBusProtocol.deriveTLSources(p)
   //  comm_node, rocc_front, frontDMA_joined
-  val comm_node = front_bus_config(OptionalPassKey)
   val frontDMA_joined = front_bus_config(DMANodeKey)
   val rocc_front = front_bus_config(RoccNodeKey)
 
@@ -116,28 +110,9 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
   }
   LazyModuleWithSLRs.freezeSLRPush = false
 
-  val has_r_mem = devices.map(_.r_nodes.nonEmpty).fold(false)(_ || _) || frontDMA_joined.isDefined
-  val has_w_mem = devices.map(_.w_nodes.nonEmpty).fold(false)(_ || _) || frontDMA_joined.isDefined
-  val AXI_MEM = if (has_r_mem || has_w_mem) Some(Seq.tabulate(nMemChannels) { channel_idx =>
-    AXI4SlaveNode(Seq(AXI4SlavePortParameters(
-      slaves = Seq(AXI4SlaveParameters(
-        address = Seq(getAddressSet(channel_idx)),
-        resources = device.reg,
-        regionType = RegionType.UNCACHED,
-        supportsRead = TransferSizes(
-          externalMemParams.master.beatBytes,
-          externalMemParams.master.beatBytes * platform.prefetchSourceMultiplicity),
-        supportsWrite = TransferSizes(
-          externalMemParams.master.beatBytes,
-          externalMemParams.master.beatBytes * platform.prefetchSourceMultiplicity),
-        interleavedId = Some(1)
-      )),
-      beatBytes = externalMemParams.master.beatBytes
-    )))
-  }) else None
-
+  val AXI_MEM = front_bus_config(BeethovenInternalMemKey)
   // deal with memory interconnect
-  val _ = {
+  locally {
     val r_map = devices.flatMap { d =>
       val on_chip = d.r_nodes.map(b => (b, d.deviceId)).map { case (src, idx) =>
         val checkProt = TLSupportChecker(a => a.master.allSupportGet.max > 0 ^ a.master.allSupportPutFull.max > 0, "Protocol Exclusive: rmap top")
@@ -198,28 +173,34 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
     if (is_map_nonempty(r_commits) || is_map_nonempty(w_commits)) {
       platform.physicalInterfaces.foreach {
         case pmi: PhysicalMemoryInterface =>
-          val mem = (AXI_MEM.get)(pmi.channelIdx)
+          val mem = AXI_MEM(pmi.channelIdx)
 
-          val sTLToAXI = if (is_map_nonempty(r_commits) && is_map_nonempty(w_commits))
-            LazyModuleWithFloorplan(new TLToAXI4SRW(), pmi.locationDeviceID).node
-          else
-            LazyModuleWithFloorplan(new TLToAXI4(), pmi.locationDeviceID).node
+          val r_exist = is_map_nonempty(r_commits)
+          val w_exist = is_map_nonempty(w_commits)
 
-          Seq((r_commits, "r"), (w_commits, "w")).filter(a => is_map_nonempty(a._1)).foreach { case (commit_set, ty) =>
-            val xbar_s = xbar_tree_reduce_sources(commit_set(pmi.locationDeviceID), platform.xbarMaxDegree, 1,
-              make_tl_xbar,
-              make_tl_buffer,
-              (s: Seq[TLNode], t: TLNode) => tl_assign(s, t)(p))(p)(0)
+          if (r_exist || w_exist) {
+            val sTLToAXI = if (r_exist && w_exist)
+              LazyModuleWithFloorplan(new TLToAXI4SRW(), pmi.locationDeviceID).node
+            else
+              LazyModuleWithFloorplan(new TLToAXI4(), pmi.locationDeviceID).node
 
-            def check(id: String): TLIdentityNode = ty match {
-              case "r" => TLSupportChecker.readCheck(f"Protocol Exclusive: check_r${id}")
-              case "w" => TLSupportChecker.writeCheck(f"Protocol Exclusive: check_w${id}")
+            Seq((r_commits, "r"), (w_commits, "w")).filter(a => is_map_nonempty(a._1)).foreach { case (commit_set, ty) =>
+              val xbar_s = xbar_tree_reduce_sources(commit_set(pmi.locationDeviceID), platform.xbarMaxDegree, 1,
+                make_tl_xbar,
+                make_tl_buffer,
+                (s: Seq[TLNode], t: TLNode) => tl_assign(s, t)(p))(p)(0)
+
+              def check(id: String): TLIdentityNode = ty match {
+                case "r" => TLSupportChecker.readCheck(f"Protocol Exclusive: check_r${id}")
+                case "w" => TLSupportChecker.writeCheck(f"Protocol Exclusive: check_w${id}")
+              }
+
+              sTLToAXI := check("post") := TLSourceShrinkerDynamicBlocking(1 << platform.memoryControllerIDBits) := check("pre") := xbar_s
             }
-
-            sTLToAXI := check("post") := TLSourceShrinkerDynamicBlocking(1 << platform.memoryControllerIDBits) := check("pre") := xbar_s
+            mem := AXI4Buffer() := sTLToAXI
+          } else {
+            mem := LazyModule(new TieOff()).node
           }
-          //              .foreach(sTLToAXI := TLSourceShrinkerDynamicBlocking(1 << platform.memoryControllerIDBits) := _))
-          mem := AXI4Buffer(BufferParams.default) := sTLToAXI
         case _ => ;
       }
     }
@@ -227,7 +208,7 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
   }
 
   // commands
-  val _ = {
+  locally {
     // the sinks consist of the host interface and any system that can emit commands
     // the sources consist of all systems
     val emitters_per_device = devices.flatMap { sd =>
@@ -256,7 +237,7 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
   }
 
   // on chip memory transfers
-  {
+  locally {
     val devices_with_sinks = devices.filter(_.incoming_mem.nonEmpty).map { sd => sd.deviceId }
 
     val net = create_cross_chip_network(
@@ -277,62 +258,34 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
   }
 
 
+
   lazy val module = new TopImpl(this)
 }
 
 
 class TopImpl(outer: BeethovenTop)(implicit p: Parameters) extends LazyRawModuleImp(outer) {
-  val clock = IO(Input(Clock()))
-  val reset = IO(Input(Bool()))
-  // have to keep these if statements separate so that chisel doesn't do any stupid renaming to "chiselReset_reset"
-  // for instance
-  if (platform.isActiveHighReset) {
-    reset.suggestName("reset")
-  } else {
-    reset.suggestName("RESETn")
-  }
-  val chiselReset = if (platform.isActiveHighReset) {
-    reset
-  } else {
-    !reset
-  }
-  platform.frontBusProtocol.deriveTopIOs(outer.comm_node, childClock, chiselReset)
-  childReset := chiselReset
-  childClock := clock
+  val full_config = platform.frontBusProtocol.deriveTopIOs(outer.front_bus_config.alterPartial({
+    case BeethovenInternalMemKey => outer.AXI_MEM
+  }))
+  val clocks = full_config(ClockKey)
+  val resets = full_config(ResetKey)
 
-  if (outer.AXI_MEM.isDefined) {
-    val dram_ports = outer.AXI_MEM.get
-    val M00_AXI = dram_ports.zipWithIndex.map { case (a, idx) =>
-      val io = IO(AXI4Compat(a.in(0)._1.params))
-      io.suggestName(s"M0${idx}_AXI")
-      io
-    }
-    val ins = dram_ports.map(_.in(0))
-    (M00_AXI zip ins) foreach { case (i, (o, _)) =>
-      AXI4Compat.connectCompatMaster(i, o, if (platform.hasDebugAXICACHEPROT) outer.front_bus_config(DebugCacheProtSignalKey) else None)
-    }
-    if (platform.extMem.master.idBits > 0) {
-      require(M00_AXI(0).rid.getWidth <= platform.extMem.master.idBits,
-        s"Too many ID bits for this platform. Try reducing the\n" +
-          s"prefetch length of scratchpads/readers/writers.\n" +
-          s"Current width: ${M00_AXI(0).rid.getWidth}\n" +
-          s"Required width: ${platform.extMem.master.idBits}")
-    }
-  }
+  val clock = clocks(0)
+  childClock := clock
+  childReset := resets(0)
 
   // Generate C++ headers once all of the cores have been generated so that they have
   //   the opportunity to dictate which symbols they want exported
   Generation.CppGen.Generation.genCPPHeader(outer)
   if (p(BuildModeKey) == BuildMode.Synthesis)
-    ConstraintGeneration.writeConstraints()
-
+    ConstraintGeneration.writeConstraints(BeethovenBuild.top_build_dir / "user_constraints.xdc")
   /**
    * Reset propagation. After the top module has been created, we can find all of the submodules and on which SLR
    * they belong.
    */
 
   // reset propagation
-  {
+  locally {
     val devicesNeedingReset = (LazyModuleWithSLRs.toplevelObjectsPerSLR.map(_._1) ++
       outer.devices.map { b: Subdevice => b.deviceId }).distinct
     val resets = devicesNeedingReset.map { a => (a, ResetBridge(childReset, clock, 4)) }
@@ -344,5 +297,4 @@ class TopImpl(outer: BeethovenTop)(implicit p: Parameters) extends LazyRawModule
     }
 
   }
-
 }

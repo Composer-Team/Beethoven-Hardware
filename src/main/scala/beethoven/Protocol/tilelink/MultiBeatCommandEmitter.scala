@@ -3,9 +3,7 @@ import chipsalliance.rocketchip.config.Parameters
 import chisel3._
 import chisel3.util._
 import beethoven.Protocol.RoCC.Helpers.BeethovenOpcode.ACCEL
-import beethoven.Protocol.tilelink.TLSlave
-import beethoven.Systems._
-import beethoven.common._
+import beethoven._
 
 class MultiBeatCommandEmitter[T <: AccelCommand](gen: T, expectResponse: Boolean, opCode: Int)(implicit p: Parameters) extends Module {
   val in: DecoupledIO[T] = IO(Flipped(Decoupled(gen)))

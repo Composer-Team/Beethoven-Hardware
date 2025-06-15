@@ -1,10 +1,9 @@
 package beethoven.Protocol.RoCC.Helpers
 
-import beethoven.AcceleratorSystems
 import chipsalliance.rocketchip.config.Parameters
 import chisel3._
 import chisel3.util.log2Up
-import beethoven.common.AccelRoccCommand
+import beethoven._
 import beethoven.common.Misc.round2Pow2
 import freechips.rocketchip.diplomacy.AddressSet
 import freechips.rocketchip.tile.OpcodeSet

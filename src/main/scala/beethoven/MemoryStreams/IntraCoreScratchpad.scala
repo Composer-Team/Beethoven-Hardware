@@ -1,12 +1,13 @@
 package beethoven.MemoryStreams
 
+import beethoven._
 import chipsalliance.rocketchip.config._
 import chisel3._
 import chisel3.util._
 import beethoven.common.ShiftReg
 import beethoven.Protocol.tilelink.TLSlave.TLSlaveManagerNode
 import beethoven.Systems.getCommMemAddressSet
-import beethoven.{AcceleratorSystemConfig, IntraCoreMemoryPortInConfig, platform}
+import beethoven.platform
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.subsystem._
 import freechips.rocketchip.tilelink._

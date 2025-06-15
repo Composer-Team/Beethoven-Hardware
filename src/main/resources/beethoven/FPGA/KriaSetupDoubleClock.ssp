@@ -19,10 +19,13 @@
 <%@ val verilog_file: String %>
 <%@ val top_module: String %>
 <%@ val clock_rate: String %>
+<%@ val clock_rate2: String %>
 
 
+exec rm -rf ${output_dir}
 create_project ${project_name} ${output_dir} -part ${part_name} -force
 exec rm -rf ips
+
 if { [file exists ip.tcl] == 1} {
   source ip.tcl
 }
@@ -40,7 +43,9 @@ set_property -dict [list \\
     CONFIG.PSU__USE__S_AXI_GP2 {1} \\
     CONFIG.PSU__SAXIGP2__DATA_WIDTH {32} \\
     CONFIG.PSU__FPGA_PL0_ENABLE {1} \\
+    CONFIG.PSU__FPGA_PL0_ENABLE {1} \\
     CONFIG.PSU__CRL_APB__PL0_REF_CTRL__FREQMHZ {${clock_rate}} \\
+    CONFIG.PSU__CRL_APB__PL1_REF_CTRL__FREQMHZ {${clock_rate2}} \\
 ] [get_bd_cells soc]
 add_files hw/
 update_compile_order -fileset sources_1
@@ -48,17 +53,31 @@ create_bd_cell -type module -reference ${top_module} top
 
 set my_bd [exec find ${output_dir} -name "design_1.bd"]
 
-connect_bd_net [get_bd_pins top/RESETn] [get_bd_pins soc/pl_resetn0]
-
 # Connect together AXI4
 startgroup
-apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {Auto} Clk_slave {Auto} \\
-  Clk_xbar {Auto} Master {/soc/M_AXI_HPM0_FPD} Slave {/top/S00_AXI} ddr_seg {Auto}             \\
-  intc_ip {New AXI SmartConnect} master_apm {0}} [get_bd_intf_pins top/S00_AXI]
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { \\
+  Clk_master {/soc/pl_clk0} \\
+  Clk_slave {Auto} \\
+  Clk_xbar {/soc/pl_clk0} \\
+  Master {/soc/M_AXI_HPM0_FPD} \\
+  Slave {/top/S00_AXI} \\
+  ddr_seg {Auto} \\
+  intc_ip {New AXI SmartConnect} \\
+  master_apm {0}} [get_bd_intf_pins top/S00_AXI]
 
-apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {Auto} Clk_slave {Auto} \\
-  Clk_xbar {Auto} Master {/top/M00_AXI} Slave {/soc/S_AXI_HP0_FPD} ddr_seg {Auto}              \\
-  intc_ip {New AXI SmartConnect} master_apm {0}} [get_bd_intf_pins soc/S_AXI_HP0_FPD]
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { \\
+  Clk_master {/soc/pl_clk1} \\
+  Clk_slave {Auto} \\
+  Clk_xbar {/soc/pl_clk1} \\
+  Master {/top/M00_AXI} \\
+  Slave {/soc/S_AXI_HP0_FPD} \\
+  ddr_seg {Auto} \\
+  intc_ip {New AXI SmartConnect} \\
+  master_apm {0}} [get_bd_intf_pins soc/S_AXI_HP0_FPD]
+
+apply_bd_automation -rule xilinx.com:bd_rule:clkrst -config { Clk {/soc/pl_clk1} } [get_bd_pins top/clock_1]
+connect_bd_net [get_bd_pins top/RESETn] [get_bd_pins rst_soc_99M/peripheral_aresetn]
+connect_bd_net [get_bd_pins top/RESETn_1] [get_bd_pins rst_soc_99M/peripheral_aresetn]
 
 # Make wrapper and setup build environment
 make_wrapper -files [get_files [exec find ${output_dir} -name "design_1.bd" ] ] -top

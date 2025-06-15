@@ -1,6 +1,6 @@
-package beethoven.Platforms.FPGA.Xilinx.F2
+package beethoven.Platforms.FPGA.Xilinx.AWS
 
-import beethoven.Platforms.FPGA.Xilinx.F2.AWSF2Platform._
+import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2Platform.{check_if_setup, initial_setup}
 import beethoven.Platforms.FPGA.Xilinx.{Templates, getTclMacros}
 import beethoven.Platforms.PlatformType.PlatformType
 import beethoven.Platforms._
@@ -102,6 +102,12 @@ class AWSF2Platform extends
           precompile_dependencies = getTclMacros()
         ).ip_script + "\nupdate_compile_order -fileset sources_1\n")
       SynthScript.write(BeethovenBuild.top_build_dir / "synth_cl_beethoven_top.tcl")
+      os.write.over(BeethovenBuild.top_build_dir / "combined_pnr.xdc",
+        f"""
+        |source ~/aws-fpga/hdk/common/shell_stable/build/constraints/small_shell_level_1_fp_cl.xdc
+        |source ~/cl_beethoven_top/build/scripts/user_constraints.xdc
+        |"""
+      )
 
       // get aws address from stdio input
       println("Compilation is done.")
@@ -124,12 +130,16 @@ class AWSF2Platform extends
               "mv", "~/cl_beethoven_top/generated-src", "~/cl_beethoven_top/design", "&&",
               "cp", "-r", "~/aws-fpga/hdk/common/shell_stable/build/scripts ~/cl_beethoven_top/build/", "&&",
               "cp", "-r", "~/aws-fpga/hdk/cl/examples/CL_TEMPLATE/design/cl_id_defines.vh ~/cl_beethoven_top/design/", "&&",
-              "cp", "~/aws-fpga/hdk/common/shell_stable/build/constraints/small_shell_level_1_fp_cl.xdc", "~/cl_beethoven_top/build/constraints/small_shell_cl_pnr_user.xdc", "&&",
+              // "cp", "~/aws-fpga/hdk/common/shell_stable/build/constraints/small_shell_level_1_fp_cl.xdc", "~/cl_beethoven_top/build/constraints/small_shell_cl_pnr_user.xdc", "&&",
               "touch", "~/cl_beethoven_top/build/constraints/cl_synth_user.xdc", "&&",
               "touch", "~/cl_beethoven_top/build/constraints/cl_timing_user.xdc").call()
             os.proc("rsync", "-avz", (run_dir / "src_list.tcl").toString(), f"ubuntu@$in:~/cl_beethoven_top/design/").call()
             os.proc("rsync", "-avz", (BeethovenBuild.top_build_dir / "synth_cl_beethoven_top.tcl").toString(), f"ubuntu@$in:~/cl_beethoven_top/build/scripts/").call()
             os.proc("rsync", "-avz", (BeethovenBuild.top_build_dir / "user_constraints.xdc").toString(), f"ubuntu@$in:~/cl_beethoven_top/build/scripts/").call()
+            val dst_file = "~/cl_beethoven_top/build/constraints/small_shell_cl_pnr_user.xdc"
+            os.proc("ssh", f"ubuntu@$in", 
+              f"cat ~/aws-fpga/hdk/common/shell_stable/build/constraints/small_shell_level_1_fp_cl.xdc > $dst_file &&" +
+              f"cat ~/cl_beethoven_top/build/scripts/user_constraints.xdc >> $dst_file").call()
           } catch {
             case e: Exception =>
               println(e)
@@ -152,9 +162,9 @@ class AWSF2Platform extends
   override val physicalConnectivity: List[(Int, Int)] = List((0, 1), (1, 2))
 
   override val physicalDevices: List[DeviceConfig] = List(
-    DeviceConfig(0, "pblock_CL_bot"),
-    DeviceConfig(1, "pblock_CL_mid"),
-    DeviceConfig(2, "pblock_CL_top")
+    DeviceConfig(0, "pblock_CL_SLR0"),
+    DeviceConfig(1, "pblock_CL_SLR1"),
+    DeviceConfig(2, "pblock_CL_SRL2")
   )
   /**
    * We won't _fail_ if we run out of memory, but there will be a warning and the memories will no longer be annotated
@@ -173,5 +183,3 @@ class AWSF2Platform extends
   override def placementAffinity: Map[Int, Double] = Map.from(Seq((0, 1.0), (1, 1.0), (2, 1.7)))
 
 }
-
-case class tclMacro(cmd: String, xciPath: Path)

@@ -6,8 +6,9 @@ import chisel3.util._
 import chisel3._
 import beethoven.MemoryStreams.HasMemoryInterface
 import beethoven.Platforms.{HasXilinxMem, Platform, PlatformKey}
-import beethoven.{BQuiet, BeethovenBuild, BeethovenConstraintHint, ConstraintHintsKey, _}
+import beethoven._
 import beethoven.common.CLog2Up
+import beethoven.{BQuiet, BeethovenConstraintHint, ConstraintHintsKey}
 
 import java.io.FileWriter
 import scala.annotation.tailrec

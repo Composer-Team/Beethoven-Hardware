@@ -2,7 +2,7 @@ package beethoven.Generation.CPP
 
 import beethoven.Generation.CPP.CommandParsing.bundlesAreEquivalentEnough
 import beethoven.Generation.CPP.TypeParsing.getCType
-import beethoven.common.{AccelResponse, AccelRoccUserResponse, EmptyAccelResponse, InvalidAccelResponse}
+import beethoven.{AccelResponse, AccelRoccUserResponse, EmptyAccelResponse, InvalidAccelResponse}
 
 object ResponseParsing {
   private[beethoven] case class BeethovenResponseDeclarations(name: String, dec: String, definition: String)

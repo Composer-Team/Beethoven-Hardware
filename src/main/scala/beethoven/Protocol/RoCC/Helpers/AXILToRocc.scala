@@ -1,14 +1,9 @@
 package beethoven.Protocol.RoCC.Helpers
 
-import beethoven.CmdRespBusWidthBytes
 import chisel3._
 import chisel3.util._
-import beethoven.common.AccelRoccCommand
+import beethoven._
 import chipsalliance.rocketchip.config._
-import freechips.rocketchip.rocket.MStatus
-import freechips.rocketchip.tile._
-import chisel3._
-import chisel3.util._
 
 //Takes nasti bits and converts to rocc
 

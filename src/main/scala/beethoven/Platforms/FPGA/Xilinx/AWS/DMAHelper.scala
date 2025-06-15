@@ -1,10 +1,10 @@
-package beethoven.Platforms.FPGA.Xilinx.F2
+package beethoven.Platforms.FPGA.Xilinx.AWS
 
-import chisel3._
-import chisel3.util._
 import beethoven._
 import beethoven.common._
 import chipsalliance.rocketchip.config.Parameters
+import chisel3._
+import chisel3.util._
 
 class DMAHelper()(implicit p: Parameters) extends AcceleratorCore {
   val io = BeethovenIO(new AccelCommand("memcmd") {

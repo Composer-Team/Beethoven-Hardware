@@ -1,6 +1,5 @@
-package beethoven.Platforms.FPGA.Xilinx.F2
+package beethoven.Platforms.FPGA.Xilinx.AWS
 
-import beethoven.Protocol.AXI.AXI4Compat
 import chipsalliance.rocketchip.config.Parameters
 import os.Path
 

@@ -1,0 +1,15 @@
+.bloop
+.bsp
+.idea
+.memories
+.metals
+.vscode
+ips
+project/.bloop
+project/project
+project/target
+project/build.properties
+project/metals.sbt
+SRs
+target
+sed_script.sed

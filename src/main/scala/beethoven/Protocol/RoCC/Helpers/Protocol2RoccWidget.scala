@@ -2,15 +2,13 @@ package beethoven.Protocol.RoCC.Helpers
 
 import chisel3._
 import chisel3.util._
-import beethoven.{CmdRespBusWidthBytes, _}
+import beethoven._
 import freechips.rocketchip.amba.axi4._
 import chipsalliance.rocketchip.config._
 import beethoven.Platforms._
 import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util._
 
-import java.io.FileWriter
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 

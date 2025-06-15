@@ -3,7 +3,7 @@ package beethoven.MemoryStreams
 import chipsalliance.rocketchip.config._
 import chisel3._
 import chisel3.util._
-import beethoven.{ScratchpadConfig, _}
+import beethoven._
 import beethoven.MemoryStreams.Loaders.ScratchpadPackedSubwordLoader
 import beethoven.common.{Address, CLog2Up, ShiftReg, splitIntoChunks}
 import beethoven.MemoryStreams.MemoryScratchpad.has_warned
@@ -75,7 +75,7 @@ object MemoryScratchpad {
 class MemoryScratchpad(csp: ScratchpadConfig)(implicit p: Parameters) extends LazyModule {
   require(csp.dataWidthBits.intValue() > 0, "The Scratchpad datawidth must be greater than 0.")
   require(csp.nDatas.intValue() > 0, "The scratchpad depth (number of rows) must be greater than 0.")
-  val channelWidthBytes = platform.extMem.master.beatBytes
+  val channelWidthBytes: Int = platform.extMem.master.beatBytes
 
   val blockBytes = p(CacheBlockBytes)
   lazy val module = new ScratchpadImpl(csp, this)
@@ -226,7 +226,7 @@ class ScratchpadImpl(csp: ScratchpadConfig,
       val reader = if (outer.useLowResourceReader) {
         println("use low resource")
         val reader = Module(new LightweightReader(
-          swWordSize * datasPerCacheLine,
+          outer.channelWidthBytes * 8,
           tl_edge = outer.mem_reader.get.out(0)._2,
           tl_bundle = outer.mem_reader.get.out(0)._1))
         reader.tl_out <> outer.mem_reader.get.out(0)._1
@@ -235,7 +235,7 @@ class ScratchpadImpl(csp: ScratchpadConfig,
       } else if (outer.very_small_sp) {
         println("very small")
         val reader = Module(new LightweightReader_small(
-          dWidth = swWordSize * datasPerCacheLine,
+          dWidth = outer.channelWidthBytes * 8,
           tl_bundle = outer.mem_reader.get.out(0)._1,
           tl_edge = outer.mem_reader.get.out(0)._2,
           sp_sz_bytes = csp.nDatas.intValue() * csp.dataWidthBits.intValue() / 8
@@ -246,7 +246,7 @@ class ScratchpadImpl(csp: ScratchpadConfig,
       } else if (!outer.forceCustom) {
         println("not small")
         val reader = Module(new SequentialReader(
-          swWordSize * datasPerCacheLine,
+          outer.channelWidthBytes * 8,
           tl_edge = outer.mem_reader.get.out(0)._2,
           tl_bundle = outer.mem_reader.get.out(0)._1))
         reader.tl_out <> outer.mem_reader.get.out(0)._1
@@ -254,7 +254,7 @@ class ScratchpadImpl(csp: ScratchpadConfig,
         reader.io
       } else {
         println("else")
-        val reader = Wire(Output(new ReadChannelIO(outer.mem_reader.get.out(0)._1.params.dataBits)))
+        val reader = Wire(Output(new ReadChannelIO(outer.channelWidthBytes * 8)))
         val (tl_out, tl_edge) = outer.mem_reader.get.out(0)
         val beatBytes = tl_out.params.dataBits / 8
         val beatBytesWidth = CLog2Up(beatBytes)

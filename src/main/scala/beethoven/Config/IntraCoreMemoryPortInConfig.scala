@@ -1,6 +1,6 @@
 package beethoven
 
-import beethoven.CommunicationDegree.{CommunicationDegree, _}
+import CommunicationDegree.{CommunicationDegree, _}
 import chisel3.util._
 
 object IntraCoreMemoryPortInConfig {

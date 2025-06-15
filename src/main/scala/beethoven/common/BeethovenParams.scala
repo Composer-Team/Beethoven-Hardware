@@ -1,7 +1,6 @@
 package beethoven
 
 import beethoven.Platforms._
-import beethoven.common._
 import chipsalliance.rocketchip.config._
 import freechips.rocketchip.devices.debug._
 import freechips.rocketchip.devices.tilelink._

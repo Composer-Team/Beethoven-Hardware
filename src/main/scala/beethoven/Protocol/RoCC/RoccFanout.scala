@@ -1,7 +1,7 @@
 package beethoven.Protocol.RoCC
 
 import beethoven.Floorplanning.LazyModuleWithSLRs.LazyModuleWithFloorplan
-import beethoven.common.AccelRoccResponse
+import beethoven._
 import chipsalliance.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
 import chisel3._

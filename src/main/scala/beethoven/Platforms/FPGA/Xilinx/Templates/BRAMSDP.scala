@@ -4,7 +4,7 @@ import chipsalliance.rocketchip.config.Parameters
 import chisel3.util.log2Up
 import chisel3._
 import beethoven.MemoryStreams.HasMemoryInterface
-import beethoven.{BeethovenBuild, BeethovenConstraintHint, ConstraintHintsKey, _}
+import beethoven._
 
 import java.io.FileWriter
 
