@@ -98,10 +98,7 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
 
   LazyModuleWithSLRs.freezeSLRPush = true
   // Generate accelerator SoC
-  val devices = platform.physicalDevices.filter { dev =>
-    // only consider devices that will have a core on it
-    p(AcceleratorSystems).map(as => slr2ncores(dev.identifier, as.nCores)._1).sum > 0
-  }.map { dev =>
+  val devices: List[Subdevice] = platform.physicalDevices.map { dev =>
     val lm = LazyModuleWithFloorplan(new Subdevice(dev.identifier)(p.alterPartial {
       case TileVisibilityNodeKey => rocc_front
     }), dev.identifier, f"beethovenDevice${dev.identifier}")
@@ -211,10 +208,16 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
   locally {
     // the sinks consist of the host interface and any system that can emit commands
     // the sources consist of all systems
-    val emitters_per_device = devices.flatMap { sd =>
-      val device_has_host = platform.physicalInterfaces.filter(_.locationDeviceID == sd.deviceId).exists(_.isInstanceOf[PhysicalHostInterface])
-      (if (device_has_host) List((rocc_front, sd.deviceId)) else List()) ++ (sd.source_rocc.map(a => (a, sd.deviceId)))
+    val host_intf: PhysicalHostInterface = platform.physicalInterfaces.filter(_.isInstanceOf[PhysicalHostInterface])(0).asInstanceOf[PhysicalHostInterface]
+    val relevant_devices: Set[Int] = Set.from(devices.map(_.deviceId)) + host_intf.locationDeviceID
+    val emitters_per_device = relevant_devices.toList.flatMap{ deviceID: Int =>
+      val basis: List[(RoccNode, Int)] = (if (deviceID == host_intf.locationDeviceID) List((rocc_front, deviceID)) else List())
+      val extras = devices.
+          filter(a => a.deviceId == deviceID).
+          map(sd => sd.source_rocc.map(a => (a, sd.deviceId))).flatten
+      basis ++ extras
     }
+    assert(emitters_per_device.nonEmpty)
 
     val devices_with_sinks = devices.map { sd => sd.deviceId }.filter { sd =>
       p(AcceleratorSystems).map(as => slr2ncores(sd, as.nCores)._1 > 0).fold(false)(_ || _)
@@ -226,19 +229,25 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
       make_buffer = make_rocc_buffer,
       make_xbar = make_rocc_xbar,
       assign = rocc_assign)
+    println(emitters_per_device)
+    println(devices_with_sinks)
     // push the commands to the devices
-    devices.foreach { sd =>
-      val sink = sd.host_rocc
+    devices.filter(_.host_rocc.isDefined).foreach { sd =>
+      val sink = sd.host_rocc.get
       val sources = net(sd.deviceId)
-      val source_unit = xbar_tree_reduce_sources(sources, platform.xbarMaxDegree, 1, make_rocc_xbar, make_rocc_buffer,
+      if (sources.nonEmpty) {
+        val source_unit = xbar_tree_reduce_sources(sources, platform.xbarMaxDegree, 1, make_rocc_xbar, make_rocc_buffer,
         (a: Seq[RoccNode], b: RoccNode) => rocc_assign(a, b)(p))(p)(0)
-      sink := source_unit
+        sink := source_unit
+      }
     }
   }
 
   // on chip memory transfers
   locally {
-    val devices_with_sinks = devices.filter(_.incoming_mem.nonEmpty).map { sd => sd.deviceId }
+    val devices_with_sinks = platform.physicalInterfaces.
+        filter(_.isInstanceOf[PhysicalMemoryInterface]).
+        map(_.asInstanceOf[PhysicalInterface].locationDeviceID)
 
     val net = create_cross_chip_network(
       sources = devices.flatMap(d => d.outgoing_mem.map(b => (b, d.deviceId))),
@@ -247,7 +256,14 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
       make_xbar = make_tl_xbar,
       assign = tl_assign)
     devices_with_sinks.foreach { sd =>
-      val sinks = xbar_tree_reduce_sinks(devices.find(_.deviceId == sd).get.incoming_mem, platform.xbarMaxDegree, platform.memEndpointsPerDevice, make_tl_xbar, make_tl_buffer, tl_assign)(p)
+      val sinks = 
+        xbar_tree_reduce_sinks(
+          devices.find(_.deviceId == sd).get.incoming_mem,
+          platform.xbarMaxDegree,
+          platform.memEndpointsPerDevice, 
+          make_tl_xbar, 
+          make_tl_buffer, 
+          tl_assign)(p)
       val sources = net(sd)
       sources.foreach { source =>
         sinks.foreach { sink =>

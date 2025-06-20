@@ -26,7 +26,8 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu") extends
   Platform with
   HasPostProccessorScript with
   PlatformHasSeparateDMA with
-  HasXilinxMem {
+  HasXilinxMem with
+  AWSPlatform {
 
   override val memoryNChannels: Int = 1
   override val platformType: PlatformType = PlatformType.FPGA
@@ -156,8 +157,8 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu") extends
   }
 
   override val physicalInterfaces: List[PhysicalInterface] = List(
-    PhysicalHostInterface(0),
-    PhysicalMemoryInterface(1, 0)
+    PhysicalHostInterface(1),
+    PhysicalMemoryInterface(2, 0)
   )
   override val physicalConnectivity: List[(Int, Int)] = List((0, 1), (1, 2))
 
@@ -172,14 +173,15 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu") extends
    * fail placement
    */
     // 320 * (2/3) = 212
-    // try to only use up to 80% (Xilinx Recommendation)
-  override val nURAMs: Map[Int, Int] = Map.from(List((0, 160), (1, 160), (2, 256))) // 960 (320 per) but try not to get too close to overallocation
-  override val nBRAMs: Map[Int, Int] = Map.from(List((0, 384), (1, 384), (2, 576))) // 2160 (720 per) but the shell takes about 30%
+    // try to only use up to 80% (Xilinx Recommendation)  
+  override val nURAMs: Map[Int, Int] = Map.from(List((0, 230), (1, 204), (2, 256))) // 960 (320 per) but try not to get too close to overallocation
+  override val nBRAMs: Map[Int, Int] = Map.from(List((0, 480), (1, 412), (2, 537))) // 2160 (720 per) but the shell takes about 30%
 
   override val net_intraDeviceXbarLatencyPerLayer: Int = 1
   override val net_intraDeviceXbarTopLatency: Int = 2
   override val net_fpgaSLRBridgeLatency: Int = 1
 
-  override def placementAffinity: Map[Int, Double] = Map.from(Seq((0, 1.0), (1, 1.0), (2, 1.7)))
-
+  override def placementAffinity: Map[Int, Double] = Map.from(Seq((0, 1.16), (1, 0.8), (2, 1.3)))
 }
+
+class AWSF2XDMAWorkarounds extends AcceleratorConfig(List(new DMAHelperConfig, new MemsetHelperConfig(4)))

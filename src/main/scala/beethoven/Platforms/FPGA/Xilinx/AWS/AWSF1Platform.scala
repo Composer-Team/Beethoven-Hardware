@@ -20,12 +20,15 @@ object AWSF1Platform {
   }
 }
 
+trait AWSPlatform
+
 class AWSF1Platform(memoryNChannels: Int,
                     val clock_recipe: String = "A0") extends
   U200Platform(memoryNChannels) with
   HasPostProccessorScript with
   PlatformHasSeparateDMA with
-  HasXilinxMem {
+  HasXilinxMem with
+  AWSPlatform {
   override val isActiveHighReset: Boolean = true
 
   override val DMAIDBits: Int = 6

@@ -140,8 +140,8 @@ package object Systems {
   @tailrec
   private[beethoven] def fanout_recursive(grp: Iterable[RoccNode], xbarDeg: Int)(implicit p: Parameters): RoccNode = {
     grp match {
-      case a :: Nil =>
-        a
+      case _ if grp.size == 1 =>
+        grp.head
       case _ =>
         val groups = grp.grouped(xbarDeg).map { q =>
           val fan_out = LazyModule(new RoccFanout).node

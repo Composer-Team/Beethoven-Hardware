@@ -11,16 +11,21 @@ import freechips.rocketchip.tilelink.TLNode
 
 class Subdevice(val deviceId: Int)(implicit p: Parameters) extends LazyModule {
   override lazy val desiredName: String = f"Subdevice${deviceId}"
-  val configs = p(AcceleratorSystems)
+  val configs = p(AcceleratorSystems).filter(sys => slr2ncores(deviceId, sys.nCores)._1 > 0)
   val constructDependencies = configs.map { a => a.canIssueCoreCommandsTo.map(b => (a.name, b)) }
 
-  val submodules = Misc.topological_sort_depends(configs.map(_.name), constructDependencies.flatten).map { name =>
-    val config = configs.find(_.name == name).get
-    val (n, offset) = slr2ncores(deviceId, config.nCores)
-    val lm = LazyModule(new AcceleratorSystem(n, offset)(p, config, deviceId))
-    lm.suggestName(f"sd${deviceId}_sys${config.name}")
-    lm
-  }
+  val submodules: List[AcceleratorSystem] = if (configs.nonEmpty) {
+    Misc.topological_sort_depends(
+      configs.map(_.name),
+      constructDependencies.flatten).
+    map { name =>
+      val config = configs.find(_.name == name).get
+      val (n, offset) = slr2ncores(deviceId, config.nCores)
+      val lm: AcceleratorSystem = LazyModule(new AcceleratorSystem(n, offset)(p, config, deviceId))
+      lm.suggestName(f"sd${deviceId}_sys${config.name}")
+      lm
+    }
+  } else List()
 
 
   val Seq(r_nodes, w_nodes) = Seq(
@@ -49,7 +54,7 @@ class Subdevice(val deviceId: Int)(implicit p: Parameters) extends LazyModule {
     }
   }
 
-  val host_rocc = {
+  val host_rocc = if (submodules.nonEmpty) {
     val fanout = LazyModule(new RoccFanout())
     submodules.foreach { sm =>
       val q = LazyModule(new RoccBuffer())
@@ -59,8 +64,8 @@ class Subdevice(val deviceId: Int)(implicit p: Parameters) extends LazyModule {
     fanout.node := buff.node
     val id = RoccIdentityNode()
     buff.node := id
-    id
-  }
+    Some(id)
+  } else None
 
   val source_rocc = {
     fanin_recursive(submodules.flatMap(_.rocc_oc).flatten.map(_._2), 2, submodules.length)

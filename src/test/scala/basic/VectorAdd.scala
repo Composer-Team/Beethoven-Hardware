@@ -7,6 +7,10 @@ import chisel3.util._
 import beethoven._
 import beethoven.common._
 import chipsalliance.rocketchip.config.Parameters
+import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF1Platform
+import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2XDMAWorkarounds
+import beethoven.Platforms.FPGA.Xilinx.AWS.DMAHelperConfig
+import beethoven.Platforms.FPGA.Xilinx.AWS.MemsetHelperConfig
 
 class VectorAdd extends Module {
   val io = IO(new Bundle {
@@ -92,7 +96,7 @@ class VectorAddCore()(implicit p: Parameters) extends AcceleratorCore {
 }
 
 class VecAddConfig extends AcceleratorConfig(
-  AcceleratorSystemConfig(
+  List(AcceleratorSystemConfig(
     nCores = 12,
     name = "myVectorAdd",
     moduleConstructor = ModuleBuilder(p => new VectorAddCore()(p)),
@@ -101,9 +105,29 @@ class VecAddConfig extends AcceleratorConfig(
       ReadChannelConfig("vec_b", dataBytes = 4),
       WriteChannelConfig("vec_out", dataBytes = 4)
     )
-  )
+  ), new DMAHelperConfig, new MemsetHelperConfig(4)) 
 )
 
-object VectorAddConfig extends BeethovenBuild(new VecAddConfig,
+object VectorAddConfig extends BeethovenBuild(
+  new VecAddConfig,
   buildMode = BuildMode.Synthesis,
-  platform = new AWSF2Platform)
+  platform = new AWSF2Platform())
+
+class VecVerilogConfig extends AcceleratorConfig(
+    AcceleratorSystemConfig(
+    nCores = 12,
+    name = "myVectorAdd",
+    moduleConstructor = new BlackboxBuilderCustom(
+        new AccelCommand("vector_add") {
+        val vec_a_addr = UInt(32.W)
+        val vec_b_addr = UInt(32.W)
+        val vec_out_addr = UInt(32.W)
+        val vector_length = UInt(32.W)
+  }, EmptyAccelResponse()),
+    memoryChannelConfig = List(
+      ReadChannelConfig("vec_a", dataBytes = 4),
+      ReadChannelConfig("vec_b", dataBytes = 4),
+      WriteChannelConfig("vec_out", dataBytes = 4)
+    )
+    )
+)

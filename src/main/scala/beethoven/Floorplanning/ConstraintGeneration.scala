@@ -6,6 +6,7 @@ import beethoven.Platforms._
 import beethoven._
 
 import java.io.FileWriter
+import beethoven.Platforms.FPGA.Xilinx.AWS.AWSPlatform
 
 object ConstraintGeneration {
   // map module -> SLR
@@ -27,10 +28,7 @@ object ConstraintGeneration {
         val f = new FileWriter(outPath.toString())
 
         val slrs = platform.physicalDevices
-        val id2Name = if (platform.isInstanceOf[AWSF1Platform])
-          Map.from(slrs.zipWithIndex.map(q => q.copy(_1 = q._2, _2 = q._1.name)))
-        else
-          Map.from(slrs.zipWithIndex.map(q => q.copy(_1 = q._2, _2 = "beethoven_slr_" + q._1.name)))
+        val id2Name = Map.from(slrs.zipWithIndex.map(q => q.copy(_1 = q._2, _2 = q._1.name)))
         if (!platform.isInstanceOf[AWSF1Platform]) {
           // AWS constraints are appended to existing constraint file which already defines pblock names, no need to
           // redefine
