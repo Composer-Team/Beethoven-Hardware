@@ -89,9 +89,9 @@ class AcceleratorSystemImp(val outer: AcceleratorSystem)(implicit p: Parameters)
     core.io_declaration <> rocc.in(0)._1
   }
 
-  cores.zip(outer.rocc_oc) foreach { case (core, rocc_out) =>
-    rocc_out foreach { case (target, node) =>
-      core.beethoven_rocc_exchanges.find(_._1 == target).get._2 <> node.out(0)._1
+  cores.zip(outer.rocc_intra_inward) foreach { case (core, rocc_out) =>
+    rocc_out foreach { case (target, in, out) =>
+      core.beethoven_rocc_exchanges.find(_._1 == target).get._2 <> in.out(0)._1
     }
   }
 }

@@ -110,7 +110,7 @@ class VecAddConfig extends AcceleratorConfig(
 
 object VectorAddConfig extends BeethovenBuild(
   new VecAddConfig,
-  buildMode = BuildMode.Synthesis,
+  buildMode = BuildMode.Simulation,
   platform = new AWSF2Platform())
 
 class VecVerilogConfig extends AcceleratorConfig(

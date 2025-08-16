@@ -72,10 +72,13 @@ class AcceleratorSystem(val nCores: Int, core_offset: Int)(implicit p: Parameter
     }, 4), nodes)
   }
 
-  val rocc_oc = {
+  val rocc_intra_inward: Seq[Seq[(String, RoccClientNode, RoccNode)]] = {
     (0 until nCores) map { _ =>
       systemParams.canIssueCoreCommandsTo.map { target =>
-        (target, RoccClientNode(RoccMasterParams()))
+        val client = RoccClientNode(RoccMasterParams())
+        val fan = RoccFanout()
+        fan := client
+        (target, client, fan)
       }
     }
   }

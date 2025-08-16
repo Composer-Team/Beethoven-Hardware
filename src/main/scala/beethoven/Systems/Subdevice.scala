@@ -68,7 +68,7 @@ class Subdevice(val deviceId: Int)(implicit p: Parameters) extends LazyModule {
   } else None
 
   val source_rocc = {
-    fanin_recursive(submodules.flatMap(_.rocc_oc).flatten.map(_._2), 2, submodules.length)
+    fanin_recursive(submodules.flatMap(_.rocc_intra_inward).flatten.map(_._3), 2, submodules.length)
   }
 
   val outgoing_mem = {

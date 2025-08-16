@@ -303,12 +303,17 @@ class AcceleratorCore(implicit p: Parameters) extends Module {
     }
     val emitter = Module(new MultiBeatCommandEmitter[T](cmdGen, expectResponse, opcode))
     emitter.out <> target_exchange._2.req
+    sys_io.req.ready := emitter.in.ready
     emitter.in.valid := sys_io.req.valid
     emitter.in.bits <> sys_io.req.bits.payload
     emitter.in.bits.__core_id := sys_io.req.bits.target_core_idx
     emitter.in.bits.__system_id := getSystemID(targetSys)
     sys_io.resp.valid := target_exchange._2.resp.valid
     sys_io.resp.bits.getDataField := target_exchange._2.resp.bits.getDataField
+    sys_io.resp.bits.rd := target_exchange._2.resp.bits.rd
+    sys_io.resp.bits.elements("core_id") := target_exchange._2.resp.bits.core_id
+    sys_io.resp.bits.elements("system_id") := target_exchange._2.resp.bits.system_id
+
     target_exchange._2.resp.ready := sys_io.resp.ready
 
     sys_io

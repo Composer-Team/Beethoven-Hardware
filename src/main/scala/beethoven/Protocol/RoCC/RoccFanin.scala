@@ -10,15 +10,17 @@ import chisel3.util._
 class RoccFanin(implicit p: Parameters) extends LazyModule {
   val node = RoccNexusNode(
     dFn = { sm => sm(0) },
-    uFn = {
-      ss =>
-        assert(ss.length == 1, "Cannot fanin to more than one slave")
-        ss(0)
+    uFn = { ss =>
+      assert(ss.length == 1, "Cannot fanin to more than one slave")
+      ss(0)
     }
   )
 
   lazy val module = new LazyModuleImp(this) {
+    // multiple command inputs
     val ins = node.in
+    ins.zipWithIndex.foreach(a => a._1._1.req.suggestName(f"input_lane_${a._2}"))
+    // one command output
     val out = node.out(0)
     if (ins.length == 1) {
       val ir = ins(0)._1.req
@@ -39,22 +41,57 @@ class RoccFanin(implicit p: Parameters) extends LazyModule {
       val cmd_arbiter = Module(new Arbiter(new AccelRoccCommand(), ins.length))
       ins.map(_._1.req).zip(cmd_arbiter.io.in).foreach { case (a, b) => a <> b }
       cmd_arbiter.io.out <> out._1.req
+      val max_core_diff: Int =
+        out._2.up.system_core_ids.map(a => a._2._2 - a._2._1).max
+
+      val returnHit = Wire(UInt(log2Up(ins.length).W))
+      returnHit := false.B
+
+      val resp_core_id = out._1.resp.bits.core_id
+      val resp_sys_id = out._1.resp.bits.system_id
 
       val sys_vecs = VecInit(out._2.up.system_core_ids.map { case (sid, cores) =>
         val nCores = cores._2 - cores._1
-        val master_source = Reg(Vec(nCores, UInt(log2Up(ins.length).W)))
+        val master_source = Reg(Vec(max_core_diff, UInt(log2Up(ins.length).W)))
+        val lookup_valid: Vec[Bool] = Reg(Vec(max_core_diff, Bool()))
+        when (reset.asBool) {
+          lookup_valid.foreach(_ := false.B)
+        }
         val sys_match = out._1.req.bits.getSystemID === sid.U
+        val core_adj = out._1.req.bits.getCoreID - cores._1.U
 
         when(out._1.req.fire && sys_match && out._1.req.bits.inst.xd) {
-          master_source(out._1.req.bits.getCoreID - cores._1.U) := cmd_arbiter.io.chosen
-          assert(out._1.req.bits.getCoreID < cores._1.U && out._1.req.bits.getCoreID >= cores._2.U, "Core requested is out of range of available cores...")
+          master_source(core_adj) := cmd_arbiter.io.chosen
+          lookup_valid(core_adj) := true.B
+          assert(
+            out._1.req.bits.getCoreID >= cores._1.U && out._1.req.bits.getCoreID <= cores._2.U,
+            "Core requested is out of range of available cores... Expect (%d, lo: %d, hi: %d )",
+            out._1.req.bits.getCoreID,
+            cores._1.U,
+            cores._2.U
+          )
+        }
+
+        // do we hit for this system?
+        val resp_core_adj = resp_core_id - cores._1.U
+        val localHit = resp_sys_id === sid.U &&
+            resp_core_id >= cores._1.U &&
+            resp_core_id <= cores._2.U && 
+            lookup_valid(resp_core_adj)
+        val hit_lookup = master_source(resp_core_adj)
+        when (localHit) {
+          returnHit := hit_lookup
+          lookup_valid(resp_core_adj) := 0.U
         }
         master_source
       }.toSeq)
 
       ins.zipWithIndex.foreach { case (a, idx) =>
-        a._1.resp.valid := sys_vecs(out._1.resp.bits.system_id)(out._1.resp.bits.core_id) === idx.U && out._1.resp.valid
+        a._1.resp.valid := idx.U === returnHit && out._1.resp.valid
         a._1.resp.bits := out._1.resp.bits
+        when (idx.U === returnHit) {
+          out._1.resp.ready := a._1.resp.ready
+        }
       }
     }
   }
@@ -62,10 +99,13 @@ class RoccFanin(implicit p: Parameters) extends LazyModule {
 
 object RoccFanin {
   private var rocc_fanin_idx = 0
-  def apply()(implicit p: Parameters): RoccNexusNode = LazyModuleWithFloorplan(new RoccFanin(), {
-    val id = rocc_fanin_idx
-    rocc_fanin_idx += 1
-    s"zzrocc_fanin_$id"
-  }).node
-  def apply(name: String)(implicit p: Parameters): RoccNexusNode = LazyModuleWithFloorplan(new RoccFanin(), name).node
+  def apply()(implicit p: Parameters): RoccNexusNode = LazyModuleWithFloorplan(
+    new RoccFanin(), {
+      val id = rocc_fanin_idx
+      rocc_fanin_idx += 1
+      s"zzrocc_fanin_$id"
+    }
+  ).node
+  def apply(name: String)(implicit p: Parameters): RoccNexusNode =
+    LazyModuleWithFloorplan(new RoccFanin(), name).node
 }

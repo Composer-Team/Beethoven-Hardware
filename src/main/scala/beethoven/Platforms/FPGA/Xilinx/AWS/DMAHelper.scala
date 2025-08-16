@@ -5,8 +5,10 @@ import beethoven.common._
 import chipsalliance.rocketchip.config.Parameters
 import chisel3._
 import chisel3.util._
+import beethoven.Generation.CppGeneration
 
 class DMAHelper()(implicit p: Parameters) extends AcceleratorCore {
+  CppGeneration.addPreprocessorDefinition("__BEETHOVEN_USE_F2_DMA_WORKAROUND")
   val io = BeethovenIO(new AccelCommand("memcmd") {
     val write = Bool()
     val address = Address()
