@@ -7,6 +7,7 @@ import freechips.rocketchip.diplomacy._
 import chisel3._
 import chisel3.util.Arbiter
 
+// Fan-out a single source to multiple sinks
 class RoccFanout(implicit p: Parameters) extends LazyModule {
   val node = RoccNexusNode(
     dFn = { mp =>

@@ -13,3 +13,5 @@ project/metals.sbt
 SRs
 target
 sed_script.sed
+.*
+a.out

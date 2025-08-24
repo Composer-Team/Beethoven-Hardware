@@ -7,6 +7,7 @@ import freechips.rocketchip.diplomacy._
 import chisel3._
 import chisel3.util._
 
+// Fan-in multiply command sources to a single sink
 class RoccFanin(implicit p: Parameters) extends LazyModule {
   val node = RoccNexusNode(
     dFn = { sm => sm(0) },
@@ -81,7 +82,9 @@ class RoccFanin(implicit p: Parameters) extends LazyModule {
         val hit_lookup = master_source(resp_core_adj)
         when (localHit) {
           returnHit := hit_lookup
-          lookup_valid(resp_core_adj) := 0.U
+          when (out._1.resp.fire) {
+            lookup_valid(resp_core_adj) := 0.U
+          }
         }
         master_source
       }.toSeq)
