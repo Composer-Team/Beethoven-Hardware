@@ -8,7 +8,8 @@ import freechips.rocketchip.diplomacy.LazyModule
 
 case object FastMemClockCross extends Field[Seq[ClockCrossing]]
 
-class AXIFrontBusProtocolFastMem(withDMA: Boolean) extends AXIFrontBusProtocol(withDMA = withDMA, nClocks = 2) {
+class AXIFrontBusProtocolFastMem(withDMA: Boolean)
+    extends AXIFrontBusProtocol(withDMA = withDMA, nClocks = 2) {
   override def deriveTLSources(implicit p: Parameters): Parameters = {
     val p_conf = super.deriveTLSources(p)
     if (p(BuildModeKey) == BuildMode.Synthesis) {
@@ -22,12 +23,14 @@ class AXIFrontBusProtocolFastMem(withDMA: Boolean) extends AXIFrontBusProtocol(w
 
       p_conf.alterPartial({
         case BeethovenInternalMemKey => mem_internals
-        case FastMemClockCross => crosses
+        case FastMemClockCross       => crosses
       })
     } else p_conf
   }
 
-  override def deriveTopIOs(config: Parameters)(implicit p: Parameters): Parameters = {
+  override def deriveTopIOs(
+      config: Parameters
+  )(implicit p: Parameters): Parameters = {
     val p_conf = super.deriveTopIOs(config)
     if (p(BuildModeKey) == BuildMode.Synthesis) {
       val clocks = p_conf(ClockKey)

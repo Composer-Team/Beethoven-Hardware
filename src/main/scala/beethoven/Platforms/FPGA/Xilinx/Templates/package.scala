@@ -2,7 +2,12 @@ package beethoven.Platforms.FPGA.Xilinx
 
 package object Templates {
   private[Templates] val memoryRoot = os.pwd / ".memories"
-  private[Templates] def writeF(port: String, withWriteEnable: Boolean, weWidth: Int, dataWidth: Int): String = {
+  private[Templates] def writeF(
+      port: String,
+      withWriteEnable: Boolean,
+      weWidth: Int,
+      dataWidth: Int
+  ): String = {
     if (withWriteEnable)
       f"""  if(CSB$port) begin
          |    for(gi=0;gi<$weWidth;gi=gi+1) begin
@@ -17,7 +22,7 @@ package object Templates {
     else
       f"""  if(CSB$port) begin
          |    if (WEB$port) begin
-         |      mem[0][A$port] <= I$port[${dataWidth-1}:0];
+         |      mem[0][A$port] <= I$port[${dataWidth - 1}:0];
          |    end else begin
          |      memreg$port <= mem[0][A$port];
          |    end

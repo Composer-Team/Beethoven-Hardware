@@ -14,8 +14,8 @@ class TLToRocc(implicit p: Parameters) extends LazyModule {
     val in = node.in(0)._1
     val out = node.out(0)._1
 
-    //this should eventually made parameterizable to the nasti width, but the nasti width is currently way wider
-    //than the data width we get
+    // this should eventually made parameterizable to the nasti width, but the nasti width is currently way wider
+    // than the data width we get
     val nBeats = 5 // ((5 * 32).toFloat / bus_bits).ceil.toInt
     val bitsBuffer = Reg(Vec(nBeats, UInt(32.W)))
 
@@ -53,12 +53,14 @@ class TLToRocc(implicit p: Parameters) extends LazyModule {
     val rocc_read_resp = 0
     val rocc_read_resp_avail = 4
 
-    CppGeneration.addUserCppDefinition(Seq(
-      ("intptr_t", "ROCC_OFF_WRITE_CMD", rocc_write_cmd),
-      ("intptr_t", "ROCC_OFF_WRITE_POP_RESP", rocc_write_pop_resp),
-      ("intptr_t", "ROCC_OFF_READ_RESP", rocc_read_resp),
-      ("intptr_t", "ROCC_OFF_READ_RESP_AVAIL", rocc_read_resp_avail)
-    ))
+    CppGeneration.addUserCppDefinition(
+      Seq(
+        ("intptr_t", "ROCC_OFF_WRITE_CMD", rocc_write_cmd),
+        ("intptr_t", "ROCC_OFF_WRITE_POP_RESP", rocc_write_pop_resp),
+        ("intptr_t", "ROCC_OFF_READ_RESP", rocc_read_resp),
+        ("intptr_t", "ROCC_OFF_READ_RESP_AVAIL", rocc_read_resp_avail)
+      )
+    )
 
     when(state === s_idle) {
       in.a.ready := true.B
@@ -94,7 +96,14 @@ class TLToRocc(implicit p: Parameters) extends LazyModule {
     }.elsewhen(state === s_read) {
       in.d.valid := true.B
       val read_resp = addr_hold === rocc_read_resp.U
-      in.d.bits := node.in(0)._2.AccessAck(id, 2.U, Mux(read_resp, resp_reg.pack()(read_count), !resp_hold_ready))
+      in.d.bits := node
+        .in(0)
+        ._2
+        .AccessAck(
+          id,
+          2.U,
+          Mux(read_resp, resp_reg.pack()(read_count), !resp_hold_ready)
+        )
       when(in.d.fire) {
         state := s_idle
         when(read_resp) {

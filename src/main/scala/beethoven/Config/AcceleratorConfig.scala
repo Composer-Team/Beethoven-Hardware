@@ -4,8 +4,8 @@ import chipsalliance.rocketchip.config.Config
 
 case class AcceleratorConfig(configs: List[AcceleratorSystemConfig]) {
   private[beethoven] def toConfig: Config = {
-    new Config((site, _, up) => {
-      case AcceleratorSystems => up(AcceleratorSystems, site) ++ configs
+    new Config((site, _, up) => { case AcceleratorSystems =>
+      up(AcceleratorSystems, site) ++ configs
     })
   }
 

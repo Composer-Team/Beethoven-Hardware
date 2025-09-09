@@ -9,16 +9,30 @@ import beethoven.Protocol.RoCC.RoccExchange
 import beethoven.common._
 import beethoven._
 
-class BeethovenCommandBundler[T1 <: AccelCommand, T2 <: AccelResponse](bundleIn: T1,
-                                                                       bundleOut: T2,
-                                                                       outer: AcceleratorSystem,
-                                                                       expectResponse: Boolean,
-                                                                       opCode: Int)(implicit p: Parameters) extends Module {
+class BeethovenCommandBundler[T1 <: AccelCommand, T2 <: AccelResponse](
+    bundleIn: T1,
+    bundleOut: T2,
+    outer: AcceleratorSystem,
+    expectResponse: Boolean,
+    opCode: Int
+)(implicit p: Parameters)
+    extends Module {
   if (outer.systemParams.canReceiveSoftwareCommands)
-    CppGeneration.addUserCppFunctionDefinition(outer.systemParams.name, bundleIn, bundleOut, opCode)
+    CppGeneration.addUserCppFunctionDefinition(
+      outer.systemParams.name,
+      bundleIn,
+      bundleOut,
+      opCode
+    )
 
   val cio = IO(Flipped(new RoccExchange))
-  val io = IO(new CustomIO[T1, T2](bundleIn.cloneType, bundleOut.cloneType, !bundleOut.isInstanceOf[InvalidAccelResponse]))
+  val io = IO(
+    new CustomIO[T1, T2](
+      bundleIn.cloneType,
+      bundleOut.cloneType,
+      !bundleOut.isInstanceOf[InvalidAccelResponse]
+    )
+  )
   val io_am_active = IO(Bool())
 
   if (expectResponse) {
@@ -50,7 +64,6 @@ class BeethovenCommandBundler[T1 <: AccelCommand, T2 <: AccelResponse](bundleIn:
       cio.resp.valid := false.B
   }
 
-
   val s_req_idle :: s_done :: Nil = Enum(2)
   val req_state = RegInit(s_req_idle)
   var reqCounter = RegInit(0.U(log2Up(bundleIn.getNBeats + 1).W))
@@ -66,7 +79,10 @@ class BeethovenCommandBundler[T1 <: AccelCommand, T2 <: AccelResponse](bundleIn:
       when(cio.req.fire) {
         val reqsRecieved = reqCounter
         reqCounter := reqCounter + 1.U
-        reqPayload(reqsRecieved) := Cat(cio.req.bits.payload1, cio.req.bits.payload2)
+        reqPayload(reqsRecieved) := Cat(
+          cio.req.bits.payload1,
+          cio.req.bits.payload2
+        )
         when(reqsRecieved === (nReqBeatsRequired - 1).U) {
           req_state := s_done
         }
@@ -102,7 +118,13 @@ class BeethovenCommandBundler[T1 <: AccelCommand, T2 <: AccelResponse](bundleIn:
         val subField = vector.getElements.head
         val divs = vector.length
         val divSize = flat.getWidth / divs
-        VecInit(Seq.tabulate(divs) { idx => flat((idx + 1) * divSize - 1, idx * divSize) }.map(subFlat => typedFlat(subField, subFlat)))
+        VecInit(
+          Seq
+            .tabulate(divs) { idx =>
+              flat((idx + 1) * divSize - 1, idx * divSize)
+            }
+            .map(subFlat => typedFlat(subField, subFlat))
+        )
       case _: Bool =>
         flat.asBool
       case _: UInt =>

@@ -6,7 +6,10 @@ import chisel3._
 import chisel3.util._
 import beethoven.MemoryStreams.RAM.SyncReadMemMem
 import beethoven.Platforms.ASIC.memoryCompiler.MemoryCompiler.sramChar_t
-import beethoven.Platforms.ASIC.memoryCompiler.{MemoryCompiler, SupportsWriteEnable}
+import beethoven.Platforms.ASIC.memoryCompiler.{
+  MemoryCompiler,
+  SupportsWriteEnable
+}
 import beethoven.Platforms.FPGA.Xilinx.Templates.{BRAMSDP, BRAMTDP}
 import beethoven.Platforms._
 import beethoven.common.ShiftReg
@@ -14,24 +17,27 @@ import freechips.rocketchip.diplomacy.ValName
 
 object Memory {
 
-  def get_name(latency: Int,
-               dataWidth: Int,
-               nRows: Int,
-               nReadPorts: Int,
-               nWritePorts: Int,
-               nReadWritePorts: Int): String =
+  def get_name(
+      latency: Int,
+      dataWidth: Int,
+      nRows: Int,
+      nReadPorts: Int,
+      nWritePorts: Int,
+      nReadWritePorts: Int
+  ): String =
     s"Memory_L${latency}_DW${dataWidth}_D${nRows}_R${nReadPorts}_W${nWritePorts}_RW${nReadWritePorts}"
 
-  def apply(latency: Int,
-            dataWidth: Int,
-            nRows: Int,
-            nReadPorts: Int,
-            nWritePorts: Int,
-            nReadWritePorts: Int,
-            withWriteEnable: Boolean = false,
-            debugName: Option[String] = None,
-            allowFallbackToRegister: Boolean = true
-           )(implicit p: Parameters, valName: ValName): MemoryIOBundle = {
+  def apply(
+      latency: Int,
+      dataWidth: Int,
+      nRows: Int,
+      nReadPorts: Int,
+      nWritePorts: Int,
+      nReadWritePorts: Int,
+      withWriteEnable: Boolean = false,
+      debugName: Option[String] = None,
+      allowFallbackToRegister: Boolean = true
+  )(implicit p: Parameters, valName: ValName): MemoryIOBundle = {
     val mostPortsSupported = p(PlatformKey) match {
       case mc: Platform with HasMemoryCompiler =>
         if (withWriteEnable)
@@ -43,9 +49,21 @@ object Memory {
     }
     val nPorts = nReadPorts + nWritePorts + nReadWritePorts
 
-    if (nPorts > mostPortsSupported && (nWritePorts + nReadWritePorts > 1 || mostPortsSupported == 1)) {
-      if (withWriteEnable) throw new Exception("Don't support write enable in SyncReadMem")
-      val regMem = Module(new SyncReadMemMem(nReadPorts, nWritePorts, nReadWritePorts, nRows, dataWidth, latency))
+    if (
+      nPorts > mostPortsSupported && (nWritePorts + nReadWritePorts > 1 || mostPortsSupported == 1)
+    ) {
+      if (withWriteEnable)
+        throw new Exception("Don't support write enable in SyncReadMem")
+      val regMem = Module(
+        new SyncReadMemMem(
+          nReadPorts,
+          nWritePorts,
+          nReadWritePorts,
+          nRows,
+          dataWidth,
+          latency
+        )
+      )
       require(nPorts < 16, "Memories must have less than 16 ports.")
       (0 until nReadPorts) foreach { idx =>
         val ridx = regMem.mio.getReadPortIdx(idx)
@@ -53,18 +71,22 @@ object Memory {
         regMem.mio.chip_select(ridx) := DontCare
       }
       regMem.mio
-    }
-    else if (nPorts > mostPortsSupported) {
+    } else if (nPorts > mostPortsSupported) {
       throw new Exception("Too many ports!!!")
     } else {
       (p(PlatformKey).platformType, p(BuildModeKey)) match {
         case (PlatformType.FPGA, _) =>
-          require(latency >= 1, "The latency of declared memories must be at least 1 cycle.")
+          require(
+            latency >= 1,
+            "The latency of declared memories must be at least 1 cycle."
+          )
 
-          def determineWE(mux_degree: Option[Int],
-                          lowDegreeAddr: Option[UInt],
-                          weSigIn: UInt,
-                          fWidth: Int): UInt = {
+          def determineWE(
+              mux_degree: Option[Int],
+              lowDegreeAddr: Option[UInt],
+              weSigIn: UInt,
+              fWidth: Int
+          ): UInt = {
             (mux_degree, withWriteEnable) match {
               case (None, _) => weSigIn
               case (Some(q), false) =>
@@ -72,9 +94,11 @@ object Memory {
                 val bytesPer = fWidth / q / 8
                 (0 until q) foreach { m =>
                   (0 until bytesPer) foreach { i =>
-                    weVec(m * bytesPer + i) := Mux(lowDegreeAddr.get === m.U,
+                    weVec(m * bytesPer + i) := Mux(
+                      lowDegreeAddr.get === m.U,
                       weSigIn,
-                      0.U)
+                      0.U
+                    )
                   }
                 }
                 weVec.asUInt
@@ -83,9 +107,11 @@ object Memory {
                 val bytesPer = fWidth / q / 8
                 (0 until q) foreach { m =>
                   (0 until bytesPer) foreach { i =>
-                    weVec(m * bytesPer + i) := Mux(lowDegreeAddr.get === m.U,
+                    weVec(m * bytesPer + i) := Mux(
+                      lowDegreeAddr.get === m.U,
                       weSigIn(i),
-                      0.U)
+                      0.U
+                    )
 
                   }
                 }
@@ -93,7 +119,10 @@ object Memory {
             }
           }
 
-          def splitAddr(mux_degree: Option[Int], addr: UInt): (UInt, Option[UInt]) = {
+          def splitAddr(
+              mux_degree: Option[Int],
+              addr: UInt
+          ): (UInt, Option[UInt]) = {
             mux_degree match {
               case Some(q) =>
                 ((addr >> log2Up(q)).asUInt, Some(addr(log2Up(q), 0)))
@@ -102,52 +131,87 @@ object Memory {
           }
 
           if (latency >= 2 && nPorts <= 2) {
-            val allocInfo = BRAMTDP.getMemoryResources(nRows,
+            val allocInfo = BRAMTDP.getMemoryResources(
+              nRows,
               dataWidth,
               debugName.getOrElse("anonymous"),
               nPorts == 1,
-              canMux = if (p(BuildModeKey) == BuildMode.Simulation) withWriteEnable else true)
+              canMux =
+                if (p(BuildModeKey) == BuildMode.Simulation) withWriteEnable
+                else true
+            )
 
             val (fRows, fWidth) = allocInfo.mux_degree match {
-              case Some(mux_deg) => ((nRows.toFloat / mux_deg).ceil.toInt, dataWidth * mux_deg)
+              case Some(mux_deg) =>
+                ((nRows.toFloat / mux_deg).ceil.toInt, dataWidth * mux_deg)
               case None => (nRows, dataWidth)
             }
 
-            val mio = Wire(Output(new MemoryIOBundle(nReadPorts, nWritePorts, nReadWritePorts, log2Up(nRows), dataWidth, withWriteEnable)))
+            val mio = Wire(
+              Output(
+                new MemoryIOBundle(
+                  nReadPorts,
+                  nWritePorts,
+                  nReadWritePorts,
+                  log2Up(nRows),
+                  dataWidth,
+                  withWriteEnable
+                )
+              )
+            )
             val isSimple = nPorts == 2 && nReadPorts == 1 && nWritePorts == 1
 
-            def hook_up(addr_o: UInt, dout_o: UInt, din_o: UInt, web_o: UInt,
-                        dout_i: UInt, addr_in: UInt, din_i: UInt, web_i: UInt): Unit = {
-                val (addr_high, addr_low) = splitAddr(allocInfo.mux_degree, addr_in)
-                addr_o := addr_high
-                dout_i := (addr_low match {
-                  case None => dout_o
-                  case Some(q) =>
-                    val muxSel = ShiftReg(q, latency, mio.clock.asClock)
-                    val muxD = VecInit((0 until allocInfo.mux_degree.get) map { i =>
+            def hook_up(
+                addr_o: UInt,
+                dout_o: UInt,
+                din_o: UInt,
+                web_o: UInt,
+                dout_i: UInt,
+                addr_in: UInt,
+                din_i: UInt,
+                web_i: UInt
+            ): Unit = {
+              val (addr_high, addr_low) =
+                splitAddr(allocInfo.mux_degree, addr_in)
+              addr_o := addr_high
+              dout_i := (addr_low match {
+                case None => dout_o
+                case Some(q) =>
+                  val muxSel = ShiftReg(q, latency, mio.clock.asClock)
+                  val muxD =
+                    VecInit((0 until allocInfo.mux_degree.get) map { i =>
                       dout_o((i + 1) * dataWidth - 1, i * dataWidth)
                     })
-                    muxD(muxSel)
-                })
-                din_o := (allocInfo.mux_degree match {
-                  case None => din_i
-                  case Some(q) =>
-                    val i_mult = Wire(Vec(q, din_i.cloneType))
-                    i_mult foreach (_ := din_i)
-                    i_mult.asUInt
-                })
-                web_o := determineWE(allocInfo.mux_degree, addr_low, web_i, fWidth)
+                  muxD(muxSel)
+              })
+              din_o := (allocInfo.mux_degree match {
+                case None => din_i
+                case Some(q) =>
+                  val i_mult = Wire(Vec(q, din_i.cloneType))
+                  i_mult foreach (_ := din_i)
+                  i_mult.asUInt
+              })
+              web_o := determineWE(
+                allocInfo.mux_degree,
+                addr_low,
+                web_i,
+                fWidth
+              )
             }
             val mem = if (nPorts == 1) {
-              val cmem = Module(new BRAMSDP(
-                latency - 1,
-                fWidth,
-                fRows,
-                withWriteEnable || allocInfo.mux_degree.isDefined,
-                debugName = debugName.getOrElse(valName.name)))
+              val cmem = Module(
+                new BRAMSDP(
+                  latency - 1,
+                  fWidth,
+                  fRows,
+                  withWriteEnable || allocInfo.mux_degree.isDefined,
+                  debugName = debugName.getOrElse(valName.name)
+                )
+              )
               cmem.suggestName(valName.name)
 
-              val (addrHigh, addrLow) = splitAddr(allocInfo.mux_degree, mio.addr(0))
+              val (addrHigh, addrLow) =
+                splitAddr(allocInfo.mux_degree, mio.addr(0))
 
               cmem.io.I := (allocInfo.mux_degree match {
                 case None => mio.data_in(0)
@@ -161,25 +225,35 @@ object Memory {
               cmem.io.A_write := addrHigh
               cmem.io.OEB := mio.read_enable(0)
               cmem.io.CSB_read := mio.chip_select(0) && mio.read_enable(0)
-              cmem.io.CSB_write := mio.chip_select(0) && mio.write_enable(0).asBool
-              cmem.io.WEB := determineWE(allocInfo.mux_degree, addrLow, mio.write_enable(0), fWidth)
+              cmem.io.CSB_write := mio
+                .chip_select(0) && mio.write_enable(0).asBool
+              cmem.io.WEB := determineWE(
+                allocInfo.mux_degree,
+                addrLow,
+                mio.write_enable(0),
+                fWidth
+              )
               mio.data_out(0) := (addrLow match {
                 case None => cmem.io.O
                 case Some(q) =>
                   val muxSel = ShiftReg(q, latency, mio.clock.asClock)
-                  val muxD = VecInit((0 until allocInfo.mux_degree.get) map { i =>
-                    cmem.io.O((i + 1) * dataWidth - 1, i * dataWidth)
-                  })
+                  val muxD =
+                    VecInit((0 until allocInfo.mux_degree.get) map { i =>
+                      cmem.io.O((i + 1) * dataWidth - 1, i * dataWidth)
+                    })
                   muxD(muxSel)
               })
               cmem
             } else if (isSimple) {
-              val cmem = Module(new BRAMSDP(
-                latency - 1,
-                fWidth,
-                fRows,
-                withWriteEnable || allocInfo.mux_degree.isDefined,
-                debugName = debugName.getOrElse(valName.name)))
+              val cmem = Module(
+                new BRAMSDP(
+                  latency - 1,
+                  fWidth,
+                  fRows,
+                  withWriteEnable || allocInfo.mux_degree.isDefined,
+                  debugName = debugName.getOrElse(valName.name)
+                )
+              )
               cmem.suggestName(valName.name)
               val ridx = mio.getReadPortIdx(0)
               val widx = mio.getWritePortIdx(0)
@@ -190,8 +264,10 @@ object Memory {
                   i_mult foreach (_ := mio.data_in(0))
                   i_mult.asUInt
               })
-              val (r_addr_high, r_addr_low) = splitAddr(allocInfo.mux_degree, mio.addr(ridx))
-              val (w_addr_high, w_addr_low) = splitAddr(allocInfo.mux_degree, mio.addr(widx))
+              val (r_addr_high, r_addr_low) =
+                splitAddr(allocInfo.mux_degree, mio.addr(ridx))
+              val (w_addr_high, w_addr_low) =
+                splitAddr(allocInfo.mux_degree, mio.addr(widx))
               cmem.io.CE := mio.clock.asBool
 
               cmem.io.A_read := r_addr_high
@@ -199,32 +275,60 @@ object Memory {
 
               cmem.io.A_write := w_addr_high
               cmem.io.CSB_write := mio.chip_select(widx)
-              cmem.io.WEB := determineWE(allocInfo.mux_degree, w_addr_low, mio.write_enable(widx), fWidth)
+              cmem.io.WEB := determineWE(
+                allocInfo.mux_degree,
+                w_addr_low,
+                mio.write_enable(widx),
+                fWidth
+              )
               cmem.io.OEB := mio.read_enable(ridx)
 
               mio.data_out(ridx) := (r_addr_low match {
                 case None => cmem.io.O
                 case Some(q) =>
                   val muxSel = ShiftReg(q, latency, mio.clock.asClock)
-                  val muxD = VecInit((0 until allocInfo.mux_degree.get) map { i =>
-                    cmem.io.O((i + 1) * dataWidth - 1, i * dataWidth)
-                  })
+                  val muxD =
+                    VecInit((0 until allocInfo.mux_degree.get) map { i =>
+                      cmem.io.O((i + 1) * dataWidth - 1, i * dataWidth)
+                    })
                   muxD(muxSel)
               })
               mio.data_out(widx) := DontCare
 
               cmem
             } else {
-              val cmem = Module(new BRAMTDP(
-                latency - 1,
-                fWidth,
-                fRows,
-                withWriteEnable || allocInfo.mux_degree.isDefined,
-                debugName = debugName.getOrElse(valName.name)))
+              val cmem = Module(
+                new BRAMTDP(
+                  latency - 1,
+                  fWidth,
+                  fRows,
+                  withWriteEnable || allocInfo.mux_degree.isDefined,
+                  debugName = debugName.getOrElse(valName.name)
+                )
+              )
               cmem.suggestName(valName.name)
-              Seq((cmem.io.A1, cmem.io.O1, cmem.io.I1, cmem.io.WEB1, mio.data_out(0), mio.addr(0), mio.data_in(0), mio.write_enable(0)),
-                (cmem.io.A2, cmem.io.O2, cmem.io.I2, cmem.io.WEB2, mio.data_out(1), mio.addr(1), mio.data_in(1), mio.write_enable(1))) foreach {
-                q =>
+              Seq(
+                (
+                  cmem.io.A1,
+                  cmem.io.O1,
+                  cmem.io.I1,
+                  cmem.io.WEB1,
+                  mio.data_out(0),
+                  mio.addr(0),
+                  mio.data_in(0),
+                  mio.write_enable(0)
+                ),
+                (
+                  cmem.io.A2,
+                  cmem.io.O2,
+                  cmem.io.I2,
+                  cmem.io.WEB2,
+                  mio.data_out(1),
+                  mio.addr(1),
+                  mio.data_in(1),
+                  mio.write_enable(1)
+                )
+              ) foreach { q =>
                 hook_up(q._1, q._2, q._3, q._4, q._5, q._6, q._7, q._8)
               }
 
@@ -238,17 +342,53 @@ object Memory {
             mio
           } else {
             // latency == 1 or 2. Recognizing URAM/BRAM is in god's hands
-            val mio = Wire(Output(new MemoryIOBundle(nReadPorts, nWritePorts, nReadWritePorts, log2Up(nRows), dataWidth, withWriteEnable)))
-            val cmem = Module(new SyncReadMemMem(nReadPorts, nWritePorts, nReadWritePorts, nRows, dataWidth, latency))
+            val mio = Wire(
+              Output(
+                new MemoryIOBundle(
+                  nReadPorts,
+                  nWritePorts,
+                  nReadWritePorts,
+                  log2Up(nRows),
+                  dataWidth,
+                  withWriteEnable
+                )
+              )
+            )
+            val cmem = Module(
+              new SyncReadMemMem(
+                nReadPorts,
+                nWritePorts,
+                nReadWritePorts,
+                nRows,
+                dataWidth,
+                latency
+              )
+            )
             mio <> cmem.mio
-            val allocInfo = BRAMTDP.getMemoryResources(nRows, dataWidth, debugName.getOrElse("anonymous"), nPorts == 1, canMux = false)
+            val allocInfo = BRAMTDP.getMemoryResources(
+              nRows,
+              dataWidth,
+              debugName.getOrElse("anonymous"),
+              nPorts == 1,
+              canMux = false
+            )
             BRAMTDP.allocateURAM(allocInfo.urams)
             BRAMTDP.allocateBRAM(allocInfo.brams)
             mio
           }
         case (PlatformType.ASIC, _) =>
           //          println("ASIC Mem")
-          val cmem = Module(new CASICMemory(latency, dataWidth, nRows, nPorts, withWriteEnable, allowFallbackToRegister, p(PlatformKey).clockRateMHz))
+          val cmem = Module(
+            new CASICMemory(
+              latency,
+              dataWidth,
+              nRows,
+              nPorts,
+              withWriteEnable,
+              allowFallbackToRegister,
+              p(PlatformKey).clockRateMHz
+            )
+          )
           cmem.suggestName(valName.name)
           cmem.io
       }
@@ -256,7 +396,8 @@ object Memory {
   }
 }
 
-class CMemorySinglePortIOBundle(val addrBits: Int, dataWidth: Int) extends Bundle {
+class CMemorySinglePortIOBundle(val addrBits: Int, dataWidth: Int)
+    extends Bundle {
   val addr = Input(UInt(addrBits.W))
 
   val data_in = Input(UInt(dataWidth.W))
@@ -273,7 +414,9 @@ object CMemorySinglePortIOBundle {
     val nPorts = in.nPorts
     val addrBits = in.addrBits
     val dataWidth = in.dataWidth
-    val io = Wire(Vec(nPorts, Output(new CMemorySinglePortIOBundle(addrBits, dataWidth))))
+    val io = Wire(
+      Vec(nPorts, Output(new CMemorySinglePortIOBundle(addrBits, dataWidth)))
+    )
     for (i <- 0 until nPorts) {
       io(i).addr := in.addr(i)
       io(i).data_in := in.data_in(i)
@@ -286,8 +429,15 @@ object CMemorySinglePortIOBundle {
   }
 
   // constructor for series of single port IOs from a flipped CMemoryIOBundle
-  def fromTransposeOutput(in: MemoryIOBundle): Vec[CMemorySinglePortIOBundle] = {
-    val io = Wire(Vec(in.nPorts, Output(new CMemorySinglePortIOBundle(in.addrBits, in.dataWidth))))
+  def fromTransposeOutput(
+      in: MemoryIOBundle
+  ): Vec[CMemorySinglePortIOBundle] = {
+    val io = Wire(
+      Vec(
+        in.nPorts,
+        Output(new CMemorySinglePortIOBundle(in.addrBits, in.dataWidth))
+      )
+    )
     for (i <- 0 until in.nPorts) {
       in.addr := io(i).addr
       in.data_in := io(i).data_in
@@ -300,12 +450,14 @@ object CMemorySinglePortIOBundle {
   }
 }
 
-class MemoryIOBundle(val nReadPorts: Int,
-                     val nWritePorts: Int,
-                     val nReadWritePorts: Int,
-                     val addrBits: Int,
-                     val dataWidth: Int,
-                     val perByteWE: Boolean) extends Bundle {
+class MemoryIOBundle(
+    val nReadPorts: Int,
+    val nWritePorts: Int,
+    val nReadWritePorts: Int,
+    val addrBits: Int,
+    val dataWidth: Int,
+    val perByteWE: Boolean
+) extends Bundle {
   def nPorts: Int = nReadPorts + nWritePorts + nReadWritePorts
 
   val addr = Input(Vec(nPorts, UInt(addrBits.W)))
@@ -315,9 +467,13 @@ class MemoryIOBundle(val nReadPorts: Int,
 
   val chip_select = Input(Vec(nPorts, Bool()))
   val read_enable = Input(Vec(nPorts, Bool()))
-  val write_enable = Input(Vec(nPorts,
-    if (perByteWE) UInt((dataWidth / 8).W)
-    else UInt(1.W)))
+  val write_enable = Input(
+    Vec(
+      nPorts,
+      if (perByteWE) UInt((dataWidth / 8).W)
+      else UInt(1.W)
+    )
+  )
 
   val clock = Input(Bool())
 
@@ -336,11 +492,16 @@ class MemoryIOBundle(val nReadPorts: Int,
   }
 
   def initLow(clock: Clock): Unit = {
-    Seq(chip_select, write_enable, read_enable, addr, data_in) foreach (_.foreach(_ := 0.U))
+    Seq(
+      chip_select,
+      write_enable,
+      read_enable,
+      addr,
+      data_in
+    ) foreach (_.foreach(_ := 0.U))
     this.clock := clock.asBool
   }
 }
-
 
 trait HasCMemoryIO {
   val io: MemoryIOBundle
@@ -373,17 +534,37 @@ trait HasMemoryInterface {
   def clocks: Seq[Bool]
 }
 
+case class SRAMArray(
+    array: List[List[sramChar_t]],
+    characteristics: Map[String, Any] = Map.empty
+)
 
-case class SRAMArray(array: List[List[sramChar_t]], characteristics: Map[String, Any] = Map.empty)
-
-/**
- * ALL LOGIC IMPLEMENTED HERE MUST BE ACTIVE LOW
- */
-class CASICMemory(latency: Int, dataWidth: Int, nRowsSuggested: Int, nPorts: Int, withWE: Boolean, allowFallbackToRegisters: Boolean, freqMHz: Int)(implicit p: Parameters)
-  extends RawModule
+/** ALL LOGIC IMPLEMENTED HERE MUST BE ACTIVE LOW
+  */
+class CASICMemory(
+    latency: Int,
+    dataWidth: Int,
+    nRowsSuggested: Int,
+    nPorts: Int,
+    withWE: Boolean,
+    allowFallbackToRegisters: Boolean,
+    freqMHz: Int
+)(implicit p: Parameters)
+    extends RawModule
     with HasCMemoryIO {
   private val nRows = Math.max(nRowsSuggested, 4 * latency)
-  override val desiredName = Memory.get_name(latency, dataWidth, nRows, 0, 0, nPorts)
-  implicit val io = IO(new MemoryIOBundle(0, 0, nPorts, log2Up(nRows), dataWidth, withWE))
-  MemoryCompiler.buildSRAM(latency, dataWidth, nRows, nPorts, withWE, allowFallbackToRegisters, freqMHz)
+  override val desiredName =
+    Memory.get_name(latency, dataWidth, nRows, 0, 0, nPorts)
+  implicit val io = IO(
+    new MemoryIOBundle(0, 0, nPorts, log2Up(nRows), dataWidth, withWE)
+  )
+  MemoryCompiler.buildSRAM(
+    latency,
+    dataWidth,
+    nRows,
+    nPorts,
+    withWE,
+    allowFallbackToRegisters,
+    freqMHz
+  )
 }

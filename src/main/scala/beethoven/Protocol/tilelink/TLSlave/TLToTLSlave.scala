@@ -23,11 +23,15 @@ class TLToTLSlave()(implicit p: Parameters) extends LazyModule {
 
 object TLToTLSlave {
   private var tl_to_tl_slave_idx = 0
-  def apply()(implicit p: Parameters): TLToTLSlaveNode = LazyModuleWithFloorplan(new TLToTLSlave(), {
-    val id = tl_to_tl_slave_idx
-    tl_to_tl_slave_idx += 1
-    s"zztl_to_tl_slave_$id"
-  }).node
+  def apply()(implicit p: Parameters): TLToTLSlaveNode =
+    LazyModuleWithFloorplan(
+      new TLToTLSlave(), {
+        val id = tl_to_tl_slave_idx
+        tl_to_tl_slave_idx += 1
+        s"zztl_to_tl_slave_$id"
+      }
+    ).node
 
-  def apply(name: String)(implicit p: Parameters): TLToTLSlaveNode = LazyModuleWithFloorplan(new TLToTLSlave(), name).node
+  def apply(name: String)(implicit p: Parameters): TLToTLSlaveNode =
+    LazyModuleWithFloorplan(new TLToTLSlave(), name).node
 }

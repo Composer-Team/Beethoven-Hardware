@@ -3,18 +3,24 @@ package beethoven.Platforms
 import beethoven.platform
 import chipsalliance.rocketchip.config._
 
-case class DeviceConfig(identifier: Int,
-                        name: String)
+case class DeviceConfig(identifier: Int, name: String)
 // implementation specifics
 
 object DeviceConfig {
 
   final def getFrontBusSLR(implicit p: Parameters): Int = {
-    platform.physicalInterfaces.find(_.isInstanceOf[PhysicalHostInterface]).get.locationDeviceID
+    platform.physicalInterfaces
+      .find(_.isInstanceOf[PhysicalHostInterface])
+      .get
+      .locationDeviceID
   }
 
-  final def getMemoryBusSLR(implicit p: Parameters): Seq[PhysicalMemoryInterface] = {
-    platform.physicalInterfaces.filter(_.isInstanceOf[PhysicalMemoryInterface]).map(_.asInstanceOf[PhysicalMemoryInterface])
+  final def getMemoryBusSLR(implicit
+      p: Parameters
+  ): Seq[PhysicalMemoryInterface] = {
+    platform.physicalInterfaces
+      .filter(_.isInstanceOf[PhysicalMemoryInterface])
+      .map(_.asInstanceOf[PhysicalMemoryInterface])
   }
 
   final def getDeviceNameFromID(idx: Int)(implicit p: Parameters): String = {

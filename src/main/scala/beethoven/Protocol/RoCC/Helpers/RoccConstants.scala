@@ -16,15 +16,24 @@ object BeethovenOpcode extends Enumeration {
 
 object BeethovenConsts {
 
-  def InternalCommandSizeBytes()(implicit p: Parameters): Int = round2Pow2(AccelRoccCommand.packLengthBytes)
+  def InternalCommandSizeBytes()(implicit p: Parameters): Int = round2Pow2(
+    AccelRoccCommand.packLengthBytes
+  )
 
-  def getInternalCmdRoutingAddressSet(systemID: Int)(implicit p: Parameters): AddressSet =
-    AddressSet(systemID * InternalCommandSizeBytes(), InternalCommandSizeBytes() - 1)
+  def getInternalCmdRoutingAddressSet(
+      systemID: Int
+  )(implicit p: Parameters): AddressSet =
+    AddressSet(
+      systemID * InternalCommandSizeBytes(),
+      InternalCommandSizeBytes() - 1
+    )
 
-  def getInternalCmdRoutingAddress(systemID: UInt)(implicit p: Parameters): UInt =
+  def getInternalCmdRoutingAddress(systemID: UInt)(implicit
+      p: Parameters
+  ): UInt =
     systemID * InternalCommandSizeBytes().U
 
   def getInternalCmdRoutingAddressWidth()(implicit p: Parameters): Int =
-    log2Up((p(AcceleratorSystems).size+1) * InternalCommandSizeBytes())
+    log2Up((p(AcceleratorSystems).size + 1) * InternalCommandSizeBytes())
 
 }

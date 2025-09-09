@@ -50,7 +50,7 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu") extends
 
   override val isActiveHighReset: Boolean = false
 
-  override val DMAIDBits: Int = 6
+  override val DMAIDBits: Int = 16
   override val clockRateMHz: Int = 250
 
   override val defaultReadTXConcurrency = 8

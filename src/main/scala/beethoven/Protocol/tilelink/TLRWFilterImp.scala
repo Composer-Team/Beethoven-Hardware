@@ -35,4 +35,3 @@ class TLRWFilterImp(outer: TLRWFilter) extends LazyModuleImp(outer) {
     in.d <> wqueue
   }
 }
-

@@ -9,13 +9,16 @@ import beethoven.Generation.CppGeneration
 
 class DMAHelper()(implicit p: Parameters) extends AcceleratorCore {
   CppGeneration.addPreprocessorDefinition("__BEETHOVEN_USE_F2_DMA_WORKAROUND")
-  val io = BeethovenIO(new AccelCommand("memcmd") {
-    val write = Bool()
-    val address = Address()
-    val payload = UInt(32.W)
-  }, new AccelResponse("my_response") {
-    val payload = UInt(32.W)
-  })
+  val io = BeethovenIO(
+    new AccelCommand("memcmd") {
+      val write = Bool()
+      val address = Address()
+      val payload = UInt(32.W)
+    },
+    new AccelResponse("my_response") {
+      val payload = UInt(32.W)
+    }
+  )
 
   val s_idle :: s_write :: s_wait :: Nil = Enum(3)
   val state = RegInit(s_idle)
@@ -38,29 +41,31 @@ class DMAHelper()(implicit p: Parameters) extends AcceleratorCore {
     payload_hold := io.req.bits.payload
   }
 
-  when (io.resp.fire) {
+  when(io.resp.fire) {
     state := s_idle
   }
 
   // write data channel will be ready 1 cycle after request fire
   writer.dataChannel.data.valid := state === s_write
   writer.dataChannel.data.bits := payload_hold
-  when (writer.dataChannel.data.fire) {
+  when(writer.dataChannel.data.fire) {
     state := s_wait
   }
   reader.dataChannel.data.ready := state === s_wait && !is_write
 
   io.resp.bits.payload := Mux(is_write, DontCare, reader.dataChannel.data.bits)
-  io.resp.valid := state === s_wait && Mux(is_write,
+  io.resp.valid := state === s_wait && Mux(
+    is_write,
     writer.dataChannel.isFlushed && writer.requestChannel.ready,
-    reader.dataChannel.data.valid)
+    reader.dataChannel.data.valid
+  )
 }
 
-class DMAHelperConfig extends AcceleratorSystemConfig(
-  nCores = 1,
-  name = "DMAHelper",
-  moduleConstructor = ModuleBuilder(p=> new DMAHelper()(p)),
-  memoryChannelConfig = List(
-    ReadChannelConfig("read", 4),
-    WriteChannelConfig("write", 4))
-)
+class DMAHelperConfig
+    extends AcceleratorSystemConfig(
+      nCores = 1,
+      name = "DMAHelper",
+      moduleConstructor = ModuleBuilder(p => new DMAHelper()(p)),
+      memoryChannelConfig =
+        List(ReadChannelConfig("read", 4), WriteChannelConfig("write", 4))
+    )

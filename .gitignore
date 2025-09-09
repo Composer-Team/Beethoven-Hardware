@@ -15,3 +15,4 @@ target
 sed_script.sed
 .*
 a.out
+build/

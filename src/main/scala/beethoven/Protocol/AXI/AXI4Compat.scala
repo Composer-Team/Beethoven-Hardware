@@ -3,10 +3,15 @@ package beethoven.Protocol.AXI
 import beethoven.Protocol.AXI.AXI4Compat._
 import chisel3._
 import chisel3.util.log2Up
-import freechips.rocketchip.amba.axi4.{AXI4Bundle, AXI4BundleParameters, AXI4Parameters}
+import freechips.rocketchip.amba.axi4.{
+  AXI4Bundle,
+  AXI4BundleParameters,
+  AXI4Parameters
+}
 import freechips.rocketchip.subsystem.MasterPortParams
 
-class AXI4Compat(val param: MasterPortParams, userBits: Int = 0) extends Bundle {
+class AXI4Compat(val param: MasterPortParams, userBits: Int = 0)
+    extends Bundle {
   val addrBits = log2Up(param.size)
   val dataBits = param.beatBytes * 8
   val awid = Output(UInt(param.idBits.W))
@@ -56,16 +61,54 @@ class AXI4Compat(val param: MasterPortParams, userBits: Int = 0) extends Bundle 
   val rready = Output(Bool())
 
   def initFromMasterLow(): Unit = {
-    Seq(awid, awaddr, awlen, awsize, awlock, awcache, awprot, awregion, awqos, awvalid, wdata,
-      wlast, wvalid, bready, arid, araddr, arlen, arsize, arlock, arcache, arprot, arregion, arqos,
-      arvalid, rready, aruser, awuser) foreach(_ := 0.U)
+    Seq(
+      awid,
+      awaddr,
+      awlen,
+      awsize,
+      awlock,
+      awcache,
+      awprot,
+      awregion,
+      awqos,
+      awvalid,
+      wdata,
+      wlast,
+      wvalid,
+      bready,
+      arid,
+      araddr,
+      arlen,
+      arsize,
+      arlock,
+      arcache,
+      arprot,
+      arregion,
+      arqos,
+      arvalid,
+      rready,
+      aruser,
+      awuser
+    ) foreach (_ := 0.U)
     awburst := 1.U
     arburst := 1.U
-    wstrb := BigInt("1" * wstrb.getWidth, radix=2).U
+    wstrb := BigInt("1" * wstrb.getWidth, radix = 2).U
   }
 
   def initFromSlaveLow(): Unit = {
-    Seq(awready, arready, rvalid, rdata, rresp, rid, rlast, wready, bvalid, bid, bresp) foreach (_ := 0.U)
+    Seq(
+      awready,
+      arready,
+      rvalid,
+      rdata,
+      rresp,
+      rid,
+      rlast,
+      wready,
+      bvalid,
+      bid,
+      bresp
+    ) foreach (_ := 0.U)
   }
 
 }
@@ -81,9 +124,13 @@ object AXI4Compat {
   val respWidth = 2
 
   val prot_level = AXI4Parameters.PROT_INSECURE
-  val cache_level = 0xF.U
+  val cache_level = 0xf.U
 
-  def connectCompatMaster(s: AXI4Compat, m: AXI4Bundle, driveAXIPROTCACHE: => Option[UInt] = None): Unit = {
+  def connectCompatMaster(
+      s: AXI4Compat,
+      m: AXI4Bundle,
+      driveAXIPROTCACHE: => Option[UInt] = None
+  ): Unit = {
     val (chosen_prot, chosen_cache) = if (driveAXIPROTCACHE.isDefined) {
       val pt = driveAXIPROTCACHE.get
       val prot = pt(2, 0)
@@ -150,7 +197,7 @@ object AXI4Compat {
     axi4.ar.bits.id := compat.arid
     axi4.ar.bits.qos := compat.arqos
     axi4.ar.bits.len := compat.arlen
-    axi4.ar.bits.lock := 0.U //compat.arlock
+    axi4.ar.bits.lock := 0.U // compat.arlock
     axi4.ar.bits.prot := prot_level // compat.arprot
     axi4.ar.bits.addr := compat.araddr
     axi4.ar.bits.burst := compat.arburst
@@ -163,7 +210,7 @@ object AXI4Compat {
     axi4.aw.bits.id := compat.awid
     axi4.aw.bits.qos := compat.awqos
     axi4.aw.bits.len := compat.awlen
-    axi4.aw.bits.lock := 0.U //compat.awlock
+    axi4.aw.bits.lock := 0.U // compat.awlock
     axi4.aw.bits.prot := prot_level // compat.awprot
     axi4.aw.bits.addr := compat.awaddr
     axi4.aw.bits.burst := compat.awburst
@@ -188,8 +235,13 @@ object AXI4Compat {
   def apply(bundleParameters: AXI4BundleParameters): AXI4Compat = {
 //    println(bundleParameters.addrBits)
     new AXI4Compat(
-      MasterPortParams(0, BigInt(1) << bundleParameters.addrBits, bundleParameters.dataBits / 8,
-      bundleParameters.idBits))
+      MasterPortParams(
+        0,
+        BigInt(1) << bundleParameters.addrBits,
+        bundleParameters.dataBits / 8,
+        bundleParameters.idBits
+      )
+    )
   }
 
 }

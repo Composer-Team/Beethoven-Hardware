@@ -3,12 +3,11 @@ package beethoven.common
 import chisel3._
 import chisel3.util._
 
-class Stack[T <: Data](gen: => T,
-                       depth: Int) extends Module {
+class Stack[T <: Data](gen: => T, depth: Int) extends Module {
   val io = IO(new QueueIO[T](gen, depth, hasFlush = false))
 
   val mem = Reg(Vec(depth, gen))
-  val ptr = RegInit(0.U(log2Up(depth+1).W))
+  val ptr = RegInit(0.U(log2Up(depth + 1).W))
   io.count := ptr
 
   io.deq.valid := ptr =/= 0.U

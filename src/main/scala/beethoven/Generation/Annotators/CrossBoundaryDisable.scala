@@ -14,11 +14,17 @@ object CrossBoundaryDisable {
     // make sure to capture the module name and repeat it
     val files = os.walk(targetDir).filter(_.last.endsWith(".v"))
 
-
-    val sed_bin = if (os.proc("sed", "--version").call(check = false, stderr = os.Pipe).out.text().contains("GNU sed"))
-      "sed"
-    else
-      "gsed"
+    val sed_bin =
+      if (
+        os.proc("sed", "--version")
+          .call(check = false, stderr = os.Pipe)
+          .out
+          .text()
+          .contains("GNU sed")
+      )
+        "sed"
+      else
+        "gsed"
     // make sed command list for each module
     val sed_cmds = disableList map { mname =>
       f"/$mname (/ i (* keep_hierarchy = \"yes\" *)"

@@ -7,6 +7,8 @@ using namespace beethoven;
 // build with 
 // g++ -rpath /usr/local/lib -I$BEETHOVEN_PATH/build -lbeethoven --std=c++17 test.cc $BEETHOVEN_PATH/build/beethoven_hardware.cc
 // discard rpath for non-mac
+
+
 int main() {
     fpga_handle_t handle;
     int vec_len = 32;

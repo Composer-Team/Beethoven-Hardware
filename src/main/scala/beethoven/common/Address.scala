@@ -31,7 +31,9 @@ object AddressInit {
 }
 
 object Address {
-  def addrBits()(implicit p: Parameters): Int = log2Up(platform.extMem.master.size)
+  def addrBits()(implicit p: Parameters): Int = log2Up(
+    platform.extMem.master.size
+  )
   def apply(in: UInt)(implicit p: Parameters): Address = {
     val a = Wire(Address())
     a.address := in

@@ -13,7 +13,7 @@ class GrayCounter(N: Int) extends Module {
 
   val cntr = RegInit(0.U(countWidth.W))
 
-  when (io.incr) {
+  when(io.incr) {
     cntr := cntr + 1.U
   }
   io.count := GrayCounter.toGray(cntr)

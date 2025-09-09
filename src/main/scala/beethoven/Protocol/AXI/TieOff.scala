@@ -4,15 +4,23 @@ import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import chisel3._
 import beethoven._
 import chipsalliance.rocketchip.config.Parameters
-import freechips.rocketchip.amba.axi4.{AXI4MasterNode, AXI4MasterParameters, AXI4MasterPortParameters}
+import freechips.rocketchip.amba.axi4.{
+  AXI4MasterNode,
+  AXI4MasterParameters,
+  AXI4MasterPortParameters
+}
 
 class TieOff()(implicit p: Parameters) extends LazyModule {
   val node = AXI4MasterNode(
-    portParams = Seq(AXI4MasterPortParameters(
-      masters = Seq(AXI4MasterParameters(
-        name = "TieOff"
-      ))
-    ))
+    portParams = Seq(
+      AXI4MasterPortParameters(
+        masters = Seq(
+          AXI4MasterParameters(
+            name = "TieOff"
+          )
+        )
+      )
+    )
   )
 
   val module = new LazyModuleImp(this) {

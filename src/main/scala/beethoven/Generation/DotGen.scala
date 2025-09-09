@@ -13,14 +13,26 @@ object DotGen {
       existingNames = a :: existingNames
       a
     }
-    val rname = dedup.replaceAll("\\.", "_").replaceAll("\\[", "_").replaceAll("\\]", "_")
-    val label = a.replaceAll("\\.", "\\\\n").replaceAll("\\[", "_").replaceAll("\\]", "_")
+    val rname =
+      dedup.replaceAll("\\.", "_").replaceAll("\\[", "_").replaceAll("\\]", "_")
+    val label =
+      a.replaceAll("\\.", "\\\\n").replaceAll("\\[", "_").replaceAll("\\]", "_")
     (rname, label)
   }
 
   def slr2color(slr: Int): String = {
     if (slr == -1) "black"
-    else Seq("red", "green", "blue", "yellow", "purple", "orange", "cyan", "magenta")(slr)
+    else
+      Seq(
+        "red",
+        "green",
+        "blue",
+        "yellow",
+        "purple",
+        "orange",
+        "cyan",
+        "magenta"
+      )(slr)
   }
 
   def addPortNode(name: String, slr: Int = -1): String = {
@@ -43,9 +55,14 @@ object DotGen {
   }
 
   // if imaginary, make the node dotted
-  def addNode(name: String, slr: Int = -1, imaginary: Boolean = false): String = {
+  def addNode(
+      name: String,
+      slr: Int = -1,
+      imaginary: Boolean = false
+  ): String = {
     val (fname, label) = fixName(f"$name$nodeCount")
-    digraph += s"  $fname [color=${slr2color(slr)} style=${if (imaginary) "dotted" else "solid"}, label=\"$label\"];\n"
+    digraph += s"  $fname [color=${slr2color(slr)} style=${if (imaginary) "dotted"
+      else "solid"}, label=\"$label\"];\n"
     fname
   }
 

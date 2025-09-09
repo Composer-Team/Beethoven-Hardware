@@ -5,7 +5,12 @@ import chisel3.util._
 import beethoven.Protocol.RoCC.Helpers.BeethovenOpcode.ACCEL
 import beethoven._
 
-class MultiBeatCommandEmitter[T <: AccelCommand](gen: T, expectResponse: Boolean, opCode: Int)(implicit p: Parameters) extends Module {
+class MultiBeatCommandEmitter[T <: AccelCommand](
+    gen: T,
+    expectResponse: Boolean,
+    opCode: Int
+)(implicit p: Parameters)
+    extends Module {
   val in: DecoupledIO[T] = IO(Flipped(Decoupled(gen)))
   val out = IO(Decoupled(new AccelRoccCommand))
   if (gen.isInstanceOf[AccelRoccCommand]) {
@@ -31,7 +36,11 @@ class MultiBeatCommandEmitter[T <: AccelCommand](gen: T, expectResponse: Boolean
       val beats = command.getRoccPayload(beatCount)
       out.bits.payload1 := beats._1
       out.bits.payload2 := beats._2
-      out.bits.inst.xd := Mux(beatCount === (nBeats - 1).U, false.B, expectResponse.B)
+      out.bits.inst.xd := Mux(
+        beatCount === (nBeats - 1).U,
+        false.B,
+        expectResponse.B
+      )
       out.bits.inst.opcode := ACCEL
       out.bits.inst.funct := opCode.U
       out.bits.inst.core_id := command.getCoreID

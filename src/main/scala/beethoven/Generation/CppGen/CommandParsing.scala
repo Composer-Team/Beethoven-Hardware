@@ -12,15 +12,19 @@ import scala.annotation.tailrec
 object CommandParsing {
   var has_done_bool_previously = false
 
-  def customCommandToCpp(hookDef: HookDef)(implicit p: Parameters): (String, String) = {
+  def customCommandToCpp(
+      hookDef: HookDef
+  )(implicit p: Parameters): (String, String) = {
     val HookDef(sysName, cc, resp, opCode) = hookDef
     val sub_signature = cc.realElements.sortBy(_._1).map { pa =>
       getCType(cc.elements(pa._1), pa._1) + " " + pa._1
     }
-    val signature = if (sub_signature.isEmpty) "" else {
-      ", " +
-        sub_signature.reduce(_ + ", " + _)
-    }
+    val signature =
+      if (sub_signature.isEmpty) ""
+      else {
+        ", " +
+          sub_signature.reduce(_ + ", " + _)
+      }
 
     def intToHexFlag(a: Long): String = {
       f"0x${a.toHexString}"
@@ -29,29 +33,45 @@ object CommandParsing {
     val numCommands = cc.getNBeats
 
     @tailrec
-    def unrollPayload(basePayload: Int, bitsLeftInPayload: Int,
-                      accessStrs: Seq[String], accessWidth: Seq[Int],
-                      payloadLocalOffset: Int, seqAcc: Seq[(Int, String)] = Seq.empty): Seq[(Int, String)] = {
+    def unrollPayload(
+        basePayload: Int,
+        bitsLeftInPayload: Int,
+        accessStrs: Seq[String],
+        accessWidth: Seq[Int],
+        payloadLocalOffset: Int,
+        seqAcc: Seq[(Int, String)] = Seq.empty
+    ): Seq[(Int, String)] = {
       if (accessStrs.isEmpty) seqAcc
       else {
         val aw = accessWidth.head
         val acc = accessStrs.head
         if (bitsLeftInPayload < aw) {
           val pl = Seq(
-            (basePayload,
-              f"((uint64_t)($acc & ${intToHexFlag((1L << bitsLeftInPayload) - 1)}LL) << $payloadLocalOffset)"),
-            (basePayload + 1,
-              f"(((uint64_t)$acc >> $bitsLeftInPayload) & ${intToHexFlag((1L << (aw - bitsLeftInPayload)) - 1)}LL)"))
-          unrollPayload(basePayload + 1,
+            (
+              basePayload,
+              f"((uint64_t)($acc & ${intToHexFlag((1L << bitsLeftInPayload) - 1)}LL) << $payloadLocalOffset)"
+            ),
+            (
+              basePayload + 1,
+              f"(((uint64_t)$acc >> $bitsLeftInPayload) & ${intToHexFlag((1L << (aw - bitsLeftInPayload)) - 1)}LL)"
+            )
+          )
+          unrollPayload(
+            basePayload + 1,
             64 - (aw - bitsLeftInPayload),
             accessStrs.tail,
             accessWidth.tail,
             aw - bitsLeftInPayload,
-            seqAcc ++ pl)
+            seqAcc ++ pl
+          )
         } else {
-          val pl = (basePayload, f"((((uint64_t)$acc) & (0x${(BigInt(2).pow(aw) - 1).toString(16)}ULL)) << $payloadLocalOffset)")
+          val pl = (
+            basePayload,
+            f"((((uint64_t)$acc) & (0x${(BigInt(2).pow(aw) - 1).toString(16)}ULL)) << $payloadLocalOffset)"
+          )
           val is_even_split = aw == bitsLeftInPayload
-          unrollPayload(if (is_even_split) basePayload + 1 else basePayload,
+          unrollPayload(
+            if (is_even_split) basePayload + 1 else basePayload,
             if (is_even_split) 64 else bitsLeftInPayload - aw,
             accessStrs.tail,
             accessWidth.tail,
@@ -62,31 +82,37 @@ object CommandParsing {
       }
     }
 
-    val payloads = cc.fieldSubranges.flatMap { case (name: String, range: (Int, Int)) =>
-      val high = range._1
-      val low = range._2
-      val width = 1 + high - low
-      if (width > 64) {
-        throw new Exception("Width of a field in a command cannot exceed 64 bits. This is not a fundamental limitation," +
-          "just something I haven't implemented yet because it's annoying...")
-      }
-      val payloadId = low / 64
-      val plo = low % 64
-      val blip = 64 - plo
-      val access = cc.elements(name) match {
-        case _: Address => f"$name.getFpgaAddr()"
-        case _ => name
-      }
+    val payloads = cc.fieldSubranges.flatMap {
+      case (name: String, range: (Int, Int)) =>
+        val high = range._1
+        val low = range._2
+        val width = 1 + high - low
+        if (width > 64) {
+          throw new Exception(
+            "Width of a field in a command cannot exceed 64 bits. This is not a fundamental limitation," +
+              "just something I haven't implemented yet because it's annoying..."
+          )
+        }
+        val payloadId = low / 64
+        val plo = low % 64
+        val blip = 64 - plo
+        val access = cc.elements(name) match {
+          case _: Address => f"$name.getFpgaAddr()"
+          case _          => name
+        }
 
-      cc.elements(name) match {
-        case v: Vec[_] =>
-          unrollPayload(payloadId, blip,
-            Seq.tabulate(v.length)(sidx => f"$access[$sidx]"),
-            Seq.fill(v.length)(v.head.getWidth),
-            plo)
-        case _ =>
-          unrollPayload(payloadId, blip, Seq(access), Seq(width), plo)
-      }
+        cc.elements(name) match {
+          case v: Vec[_] =>
+            unrollPayload(
+              payloadId,
+              blip,
+              Seq.tabulate(v.length)(sidx => f"$access[$sidx]"),
+              Seq.fill(v.length)(v.head.getWidth),
+              plo
+            )
+          case _ =>
+            unrollPayload(payloadId, blip, Seq(access), Seq(width), plo)
+        }
     }
     val assignments = (0 until (numCommands * 2)) map { payloadIdx =>
       val pl = {
@@ -109,48 +135,67 @@ object CommandParsing {
           f"""
              |void $sysName::${hookDef.cc.commandName}(uint16_t core_id$signature) {
              |#ifndef BAREMETAL
-             |  assert(core_id < ${p(AcceleratorSystems).filter(_.name == sysName)(0).nCores});
+             |  assert(core_id < ${p(AcceleratorSystems)
+              .filter(_.name == sysName)(0)
+              .nCores});
              |#endif
              |  uint64_t payloads[${Math.max(numCommands * 2, 2)}];
-             |""".stripMargin + (if (assignments.length == 1) assignments(0) + "\n" else assignments.fold("")(_ + "\n" + _)) +
+             |""".stripMargin + (if (assignments.length == 1)
+                                   assignments(0) + "\n"
+                                 else assignments.fold("")(_ + "\n" + _)) +
             f"""
                |  for (int i = 0; i < ${numCommands - 1}; ++i) {
                |    beethoven::rocc_cmd::start_cmd(${sysName}_ID, false, 0, false, false, core_id, payloads[i*2+1], payloads[i*2], $opCode).send();
                |  }
-               |  beethoven::rocc_cmd::start_cmd(${sysName}_ID, false, 0, false, false, core_id, payloads[${Math.max((numCommands - 1) * 2, 0) + 1}], payloads[${Math.max((numCommands - 1) * 2, 0)}], $opCode).send();
+               |  beethoven::rocc_cmd::start_cmd(${sysName}_ID, false, 0, false, false, core_id, payloads[${Math
+                .max((numCommands - 1) * 2, 0) + 1}], payloads[${Math.max(
+                (numCommands - 1) * 2,
+                0
+              )}], $opCode).send();
                |}""".stripMargin
         (declaration, definition)
       case Some(responseInfo) =>
         val empty_resp = (if (responseInfo.name == "bool") {
-          if (has_done_bool_previously) {
-            true
-          } else {
-            has_done_bool_previously = true
-            false
-          }
-        } else false)
-        val typeConversion = if (responseInfo.name.equals("beethoven::rocc_response")) "" else f".to<${responseInfo.name}>()";
+                            if (has_done_bool_previously) {
+                              true
+                            } else {
+                              has_done_bool_previously = true
+                              false
+                            }
+                          } else false)
+        val typeConversion =
+          if (responseInfo.name.equals("beethoven::rocc_response")) ""
+          else f".to<${responseInfo.name}>()";
 
-        def command_sig(is_dec: Boolean) = (if (is_dec) f"namespace $sysName {\n\t" else "") +
+        def command_sig(is_dec: Boolean) = (if (is_dec)
+                                              f"namespace $sysName {\n\t"
+                                            else "") +
           f"beethoven::response_handle<${responseInfo.name}> " +
           f"${if (is_dec) "" else f"$sysName::"}${cc.commandName}(uint16_t core_id$signature)" +
           (if (is_dec) ";\n}" else "")
-
 
         val definition =
           f"""
              |${if (empty_resp) "" else responseInfo.definition}
              |${command_sig(false)} {
              |#ifndef BAREMETAL
-             |  assert(core_id < ${p(AcceleratorSystems).filter(_.name == sysName)(0).nCores});
+             |  assert(core_id < ${p(AcceleratorSystems)
+              .filter(_.name == sysName)(0)
+              .nCores});
              |#endif
              |  uint64_t payloads[${Math.max(numCommands * 2, 2)}];
-             |""".stripMargin + (if (assignments.length == 1) assignments(0) + "\n" else assignments.fold("")(_ + "\n" + _)) +
+             |""".stripMargin + (if (assignments.length == 1)
+                                   assignments(0) + "\n"
+                                 else assignments.fold("")(_ + "\n" + _)) +
             f"""
                |  for (int i = 0; i < ${numCommands - 1}; ++i) {
                |    beethoven::rocc_cmd::start_cmd(${sysName}_ID, false, 0, false, false, core_id, payloads[i*2+1], payloads[i*2], $opCode).send();
                |  }
-               |  return beethoven::rocc_cmd::start_cmd(${sysName}_ID, true, 0, false, false, core_id, payloads[${Math.max((numCommands - 1) * 2, 0) + 1}], payloads[${Math.max((numCommands - 1) * 2, 0)}], $opCode).send()$typeConversion;
+               |  return beethoven::rocc_cmd::start_cmd(${sysName}_ID, true, 0, false, false, core_id, payloads[${Math
+                .max((numCommands - 1) * 2, 0) + 1}], payloads[${Math.max(
+                (numCommands - 1) * 2,
+                0
+              )}], $opCode).send()$typeConversion;
                |}""".stripMargin
         val declaration =
           f"""
@@ -167,7 +212,7 @@ object CommandParsing {
 
     aFields foreach { case (key, value) =>
       bFields.get(key) match {
-        case None => return false
+        case None     => return false
         case Some(v2) => if (v2.getWidth != value.getWidth) return false
       }
     }

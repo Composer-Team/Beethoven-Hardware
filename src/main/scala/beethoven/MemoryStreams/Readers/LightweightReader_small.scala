@@ -8,16 +8,21 @@ import chisel3.util._
 import freechips.rocketchip.tilelink.{TLBundle, TLBundleA, TLEdgeOut}
 import os.read.channel
 
-/**
- * All user-facing memory endpoints need to guarantee storage. This reader implementation does not guarantee storage
- * and relies on the endpoint to ensure storage (and therefore deadlock prevention)
- *
- * This implementation is specifically meant for ultra-lightweight implementations
- */
-class LightweightReader_small(val dWidth: Int,
-                              val tl_bundle: TLBundle,
-                              tl_edge: TLEdgeOut,
-                              sp_sz_bytes: Int)(implicit p: Parameters) extends Module with ReaderModuleIO{
+/** All user-facing memory endpoints need to guarantee storage. This reader
+  * implementation does not guarantee storage and relies on the endpoint to
+  * ensure storage (and therefore deadlock prevention)
+  *
+  * This implementation is specifically meant for ultra-lightweight
+  * implementations
+  */
+class LightweightReader_small(
+    val dWidth: Int,
+    val tl_bundle: TLBundle,
+    tl_edge: TLEdgeOut,
+    sp_sz_bytes: Int
+)(implicit p: Parameters)
+    extends Module
+    with ReaderModuleIO {
   override val desiredName = "LightReader_w" + dWidth.toString
   BeethovenBuild.requestModulePartition(this.desiredName)
   val fabricBytes = tl_edge.manager.beatBytes
@@ -32,16 +37,23 @@ class LightweightReader_small(val dWidth: Int,
     val p2 = 1 << log2Ceil(nonp2)
     p2
   }
-  require(tl_edge.client.endSourceId == 1, "Developer: Lightweight readers must be parameterized with endSourceId=1")
+  require(
+    tl_edge.client.endSourceId == 1,
+    "Developer: Lightweight readers must be parameterized with endSourceId=1"
+  )
   require(isPow2(channelBytes), "Develo")
 
   // io goes to user, TL connects with AXI4
   val io = IO(new ReadChannelIO(dWidth))
   val tl_out = IO(new TLBundle(tl_bundle.params))
-  val tl_reg = Module(new Queue(new TLBundleA(tl_out.params), 2, false, false, false))
+  val tl_reg = Module(
+    new Queue(new TLBundleA(tl_out.params), 2, false, false, false)
+  )
   tl_out.a <> tl_reg.io.deq
 
-  val channelBeatsToPerform = RegInit(0.U(log2Up(largestNecessaryPrefetch * fabricBytes / channelBytes + 1).W))
+  val channelBeatsToPerform = RegInit(
+    0.U(log2Up(largestNecessaryPrefetch * fabricBytes / channelBytes + 1).W)
+  )
   val beatPerFabricDat = fabricBytes / channelBytes
   val fabricBeatCtr = Reg(UInt(log2Up(beatPerFabricDat).W))
 
@@ -53,7 +65,10 @@ class LightweightReader_small(val dWidth: Int,
   assert(dWidth <= fabricBits)
   io.channel.in_progress := channelBeatsToPerform =/= 0.U
 
-  require(channelBytes <= fabricBytes, f"Channel width (${channelBytes}) must be less than fabric width (${fabricBytes})")
+  require(
+    channelBytes <= fabricBytes,
+    f"Channel width (${channelBytes}) must be less than fabric width (${fabricBytes})"
+  )
   io.channel.data.valid := tl_out.d.valid
   val data_split = splitIntoChunks(tl_out.d.bits.data, channelBytes * 8)
   io.channel.data.bits := data_split(fabricBeatCtr)
@@ -66,11 +81,13 @@ class LightweightReader_small(val dWidth: Int,
 
   io.req.ready := tl_reg.io.enq.ready && drain_fabric
   tl_reg.io.enq.valid := io.req.valid && drain_fabric
-  tl_reg.io.enq.bits := tl_edge.Get(
-    fromSource = 0.U,
-    toAddress = io.req.bits.addr,
-    lgSize = log2Up(largestNecessaryPrefetch * fabricBytes).U
-  )._2
+  tl_reg.io.enq.bits := tl_edge
+    .Get(
+      fromSource = 0.U,
+      toAddress = io.req.bits.addr,
+      lgSize = log2Up(largestNecessaryPrefetch * fabricBytes).U
+    )
+    ._2
   when(tl_out.d.fire) {
     fabricBeatCtr := 0.U
   }.elsewhen(io.channel.data.fire) {

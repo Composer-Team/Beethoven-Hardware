@@ -7,34 +7,45 @@ import chisel3._
 import chisel3.util._
 import freechips.rocketchip.tilelink.{TLBundle, TLBundleA, TLEdgeOut}
 
-/**
- * All user-facing memory endpoints need to guarantee storage. This reader implementation does not guarantee storage
- * and relies on the endpoint to ensure storage (and therefore deadlock prevention)
- *
- * This implementation is specifically meant for ultra-lightweight implementations
- */
-class LightweightReader(val dWidth: Int,
-                        val tl_bundle: TLBundle,
-                        tl_edge: TLEdgeOut,
-                        minSizeBytes: Option[Int] = None)(implicit p: Parameters) extends Module with ReaderModuleIO {
+/** All user-facing memory endpoints need to guarantee storage. This reader
+  * implementation does not guarantee storage and relies on the endpoint to
+  * ensure storage (and therefore deadlock prevention)
+  *
+  * This implementation is specifically meant for ultra-lightweight
+  * implementations
+  */
+class LightweightReader(
+    val dWidth: Int,
+    val tl_bundle: TLBundle,
+    tl_edge: TLEdgeOut,
+    minSizeBytes: Option[Int] = None
+)(implicit p: Parameters)
+    extends Module
+    with ReaderModuleIO {
   override val desiredName = "LightReader_w" + dWidth.toString
   val beatBytes = tl_edge.manager.beatBytes
   val beatBits = beatBytes * 8
   val addressBits = log2Up(tl_edge.manager.maxAddress)
   val maxBytes = dWidth / 8
-  val largeTxNBeats = Math.max(platform.prefetchSourceMultiplicity, maxBytes / beatBytes)
+  val largeTxNBeats =
+    Math.max(platform.prefetchSourceMultiplicity, maxBytes / beatBytes)
   val nSources = tl_edge.client.endSourceId
   val prefetchRows = Math.max(
     nSources * platform.prefetchSourceMultiplicity,
-    minSizeBytes.getOrElse(0) / beatBytes)
+    minSizeBytes.getOrElse(0) / beatBytes
+  )
   val rowsAvailableToAlloc = RegInit(prefetchRows.U(log2Up(prefetchRows + 1).W))
-  require(isPow2(maxBytes), "Readers's data buses must be a power of two bytes wide")
-
+  require(
+    isPow2(maxBytes),
+    "Readers's data buses must be a power of two bytes wide"
+  )
 
   // io goes to user, TL connects with AXI4
   val io = IO(new ReadChannelIO(dWidth))
   val tl_out = IO(new TLBundle(tl_bundle.params))
-  val tl_reg = Module(new Queue(new TLBundleA(tl_out.params), 2, false, false, false))
+  val tl_reg = Module(
+    new Queue(new TLBundleA(tl_out.params), 2, false, false, false)
+  )
   tl_out.a <> tl_reg.io.deq
 
   val storedDataWidthBytes = Math.max(beatBytes, dWidth / 8)
@@ -54,7 +65,10 @@ class LightweightReader(val dWidth: Int,
 
   // has to be pow2 to ensure OHToUInt works like we want
 
-  assert(nSources == 1, "Lightweight reader should only support a single source.")
+  assert(
+    nSources == 1,
+    "Lightweight reader should only support a single source."
+  )
   assert(dWidth >= beatBits)
   val sourceBusy = RegInit(false.B)
   io.channel.in_progress := state =/= s_idle
@@ -66,16 +80,16 @@ class LightweightReader(val dWidth: Int,
   val storage = Reg(Vec(beatsPerDat, UInt(beatBits.W)))
   val storageFill = Reg(UInt(log2Up(beatsPerDat).W))
   val storageFilled = RegInit(false.B)
-  val beatsLeft = Reg(UInt(log2Up(beatsPerDat+1).W))
+  val beatsLeft = Reg(UInt(log2Up(beatsPerDat + 1).W))
   io.channel.data.valid := storageFilled
   io.channel.data.bits := Cat(storage.reverse)
 
   tl_out.d.ready := !storageFilled
-  when (tl_out.d.fire) {
+  when(tl_out.d.fire) {
     storage(storageFill) := tl_out.d.bits.data
     storageFill := storageFill + 1.U
     beatsLeft := beatsLeft - 1.U
-    when (beatsLeft === 1.U) {
+    when(beatsLeft === 1.U) {
       beatsLeft := beatsPerDat.U
       storageFilled := true.B
       storageFill := 0.U
@@ -90,9 +104,11 @@ class LightweightReader(val dWidth: Int,
       when(io.req.fire) {
         addr := io.req.bits.addr.address
         len := io.req.bits.len
-        assert(io.req.bits.len(log2Up(beatBytes) - 1, 0) === 0.U,
+        assert(
+          io.req.bits.len(log2Up(beatBytes) - 1, 0) === 0.U,
           f"The provided length is not aligned to the data bus size. Please align to $beatBytes.\n" +
-            f"Just make sure that you always flush through the data when you're done to make the reader usable again.")
+            f"Just make sure that you always flush through the data when you're done to make the reader usable again."
+        )
         state := s_send_mem_request
         when(io.req.bits.len === 0.U) {
           state := s_idle
@@ -102,11 +118,13 @@ class LightweightReader(val dWidth: Int,
     is(s_send_mem_request) {
       when(len < largestRead.U) {
         tl_reg.io.enq.valid := !sourceBusy
-        tl_reg.io.enq.bits := tl_edge.Get(
-          fromSource = 0.U,
-          toAddress = addr,
-          lgSize = CLog2Up(beatBytes).U
-        )._2
+        tl_reg.io.enq.bits := tl_edge
+          .Get(
+            fromSource = 0.U,
+            toAddress = addr,
+            lgSize = CLog2Up(beatBytes).U
+          )
+          ._2
         when(tl_reg.io.enq.fire) {
           storageFill := 0.U
           addr := addr + beatBytes.U
@@ -115,11 +133,13 @@ class LightweightReader(val dWidth: Int,
         }
       }.otherwise {
         tl_reg.io.enq.valid := !sourceBusy
-        tl_reg.io.enq.bits := tl_edge.Get(
-          fromSource = 0.U,
-          toAddress = addr,
-          lgSize = lgLargestRead.U
-        )._2
+        tl_reg.io.enq.bits := tl_edge
+          .Get(
+            fromSource = 0.U,
+            toAddress = addr,
+            lgSize = lgLargestRead.U
+          )
+          ._2
         when(tl_reg.io.enq.fire) {
           addr := addr + largestRead.U
           len := len - largestRead.U

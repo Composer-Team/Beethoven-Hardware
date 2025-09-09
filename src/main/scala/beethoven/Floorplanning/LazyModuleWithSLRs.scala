@@ -4,8 +4,10 @@ import freechips.rocketchip.diplomacy._
 
 object LazyModuleWithSLRs {
   private[beethoven] var globalNameList: List[String] = List.empty
-  private[beethoven] var toplevelObjectsPerSLR: List[(Int, LazyModule)] = List.empty
-  private[beethoven] def clearObjectsPerSLR(): Unit = toplevelObjectsPerSLR = List.empty
+  private[beethoven] var toplevelObjectsPerSLR: List[(Int, LazyModule)] =
+    List.empty
+  private[beethoven] def clearObjectsPerSLR(): Unit = toplevelObjectsPerSLR =
+    List.empty
   private[beethoven] var freezeSLRPush: Boolean = false
   private var gl_id = 0
 
@@ -25,14 +27,20 @@ object LazyModuleWithSLRs {
     }
   }
 
-  def LazyModuleWithFloorplan[T <: LazyModule](mod: T, slr_id: Int, name: String): T = {
+  def LazyModuleWithFloorplan[T <: LazyModule](
+      mod: T,
+      slr_id: Int,
+      name: String
+  ): T = {
     val freeze = freezeSLRPush
     freezeSLRPush = true
     val lm = LazyModule(mod)
     freezeSLRPush = freeze
     lm.suggestName(name)
     if (globalNameList.contains(name)) {
-      throw new Exception(s"Name $name already exists in the globalNameList. Give this module($name) a name that will be globally unique")
+      throw new Exception(
+        s"Name $name already exists in the globalNameList. Give this module($name) a name that will be globally unique"
+      )
     }
     globalNameList = name :: globalNameList
     if (!freezeSLRPush) {
@@ -47,7 +55,9 @@ object LazyModuleWithSLRs {
     val name = s"anonymous_${mod.desiredName}_" + gl_id
     lm.suggestName(name)
     if (globalNameList.contains(name)) {
-      throw new Exception(s"Name $name already exists in the globalNameList. Give this module($name) a name that will be globally unique")
+      throw new Exception(
+        s"Name $name already exists in the globalNameList. Give this module($name) a name that will be globally unique"
+      )
     }
     gl_id = gl_id + 1
     if (!freezeSLRPush) {

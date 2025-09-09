@@ -13,7 +13,10 @@ object ConstraintGeneration {
   private[beethoven] var slrMappings: List[(String, Int)] = List.empty
 
   def addToSLR(moduleName: String, slr: Int): Unit = {
-    require(!slrMappings.map(_._1).contains(moduleName), f"The module '$moduleName' has already been assigned to an SLR!")
+    require(
+      !slrMappings.map(_._1).contains(moduleName),
+      f"The module '$moduleName' has already been assigned to an SLR!"
+    )
     slrMappings = (moduleName, slr) :: slrMappings
   }
 
@@ -28,20 +31,26 @@ object ConstraintGeneration {
         val f = new FileWriter(outPath.toString())
 
         val slrs = platform.physicalDevices
-        val id2Name = Map.from(slrs.zipWithIndex.map(q => q.copy(_1 = q._2, _2 = q._1.name)))
+        val id2Name = Map.from(
+          slrs.zipWithIndex.map(q => q.copy(_1 = q._2, _2 = q._1.name))
+        )
         if (!platform.isInstanceOf[AWSF1Platform]) {
           // AWS constraints are appended to existing constraint file which already defines pblock names, no need to
           // redefine
           slrs.indices.foreach { i =>
-            f.write(f"create_pblock ${id2Name(i)}\n" +
-              f"resize_pblock -add SLR$i ${id2Name(i)} \n")
+            f.write(
+              f"create_pblock ${id2Name(i)}\n" +
+                f"resize_pblock -add SLR$i ${id2Name(i)} \n"
+            )
           }
         }
 
         platform.physicalDevices.zipWithIndex.foreach { case (_, slrID) =>
           val cells = slrMappings.filter(_._2 == slrID)
           val plist = cells.map(c => f"*${c._1}*").fold("")(_ + " " + _)
-          f.write(f"add_cells_to_pblock ${id2Name(slrID)} [get_cells -hierarchical [list " + plist + " ] ]\n")
+          f.write(
+            f"add_cells_to_pblock ${id2Name(slrID)} [get_cells -hierarchical [list " + plist + " ] ]\n"
+          )
         }
         f.close()
       case PlatformType.ASIC => ;

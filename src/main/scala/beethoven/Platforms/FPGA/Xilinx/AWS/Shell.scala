@@ -14,26 +14,32 @@ object Shell {
     val b_sigs = Seq("id", "resp", "valid", "ready")
 
     val ddr_connects = {
-      val aw_connect = aw_ar_sigs.map(sig => f".M00_AXI_aw$sig(lcl_cl_sh_ddr.aw$sig)")
-      val ar_connect = aw_ar_sigs.map(sig => f".M00_AXI_ar$sig(lcl_cl_sh_ddr.ar$sig)")
+      val aw_connect =
+        aw_ar_sigs.map(sig => f".M00_AXI_aw$sig(lcl_cl_sh_ddr.aw$sig)")
+      val ar_connect =
+        aw_ar_sigs.map(sig => f".M00_AXI_ar$sig(lcl_cl_sh_ddr.ar$sig)")
       val w_connect = w_sigs.map(sig => f".M00_AXI_w$sig(lcl_cl_sh_ddr.w$sig)")
       val r_connect = r_sigs.map(sig => f".M00_AXI_r$sig(lcl_cl_sh_ddr.r$sig)")
       val b_connect = b_sigs.map(sig => f".M00_AXI_b$sig(lcl_cl_sh_ddr.b$sig)")
       val aw_ignore = aw_ar_ignore.map(sig => f".M00_AXI_aw$sig()")
       val ar_ignore = aw_ar_ignore.map(sig => f".M00_AXI_ar$sig()")
 
-      (aw_connect ++ ar_connect ++ w_connect ++ r_connect ++ b_connect ++ aw_ignore ++ ar_ignore).mkString(",\n    ")
+      (aw_connect ++ ar_connect ++ w_connect ++ r_connect ++ b_connect ++ aw_ignore ++ ar_ignore)
+        .mkString(",\n    ")
     }
 
     val dma_connects = {
-      val aw_connect = aw_ar_sigs.map(sig => f".dma_aw$sig(sh_cl_dma_pcis_aw$sig)")
-      val ar_connect = aw_ar_sigs.map(sig => f".dma_ar$sig(sh_cl_dma_pcis_ar$sig)")
+      val aw_connect =
+        aw_ar_sigs.map(sig => f".dma_aw$sig(sh_cl_dma_pcis_aw$sig)")
+      val ar_connect =
+        aw_ar_sigs.map(sig => f".dma_ar$sig(sh_cl_dma_pcis_ar$sig)")
       val w_connect = w_sigs.map(sig => f".dma_w$sig(sh_cl_dma_pcis_w$sig)")
       val r_connect = r_sigs.map(sig => f".dma_r$sig(sh_cl_dma_pcis_r$sig)")
       val b_connect = b_sigs.map(sig => f".dma_b$sig(sh_cl_dma_pcis_b$sig)")
       val aw_ignore = aw_ar_ignore.map(sig => f".dma_aw$sig()")
       val ar_ignore = aw_ar_ignore.map(sig => f".dma_ar$sig()")
-      (aw_connect ++ ar_connect ++ w_connect ++ r_connect ++ b_connect ++ aw_ignore ++ ar_ignore).mkString(",\n    ")
+      (aw_connect ++ ar_connect ++ w_connect ++ r_connect ++ b_connect ++ aw_ignore ++ ar_ignore)
+        .mkString(",\n    ")
     }
 
     val aw_ar_lsigs = Seq("addr", "valid", "ready")
@@ -46,25 +52,33 @@ object Shell {
       ("cache", "0"),
       ("prot", "1'b1"),
       ("region", "0"),
-      ("qos", "0"))
+      ("qos", "0")
+    )
 
     val wl_sigs = Seq("data", "strb", "valid", "ready")
     val rl_sigs = Seq("resp", "valid", "data", "ready")
     val bl_sigs = Seq("resp", "valid", "ready")
 
     val ocl_connects = {
-      val aw_connect = aw_ar_lsigs.map(sig => f".S00_AXI_aw$sig(sh_ocl_bus.aw$sig)")
-      val aw_ignore = aw_ar_lsigs_ignore.map{case (sig, fill) => f".S00_AXI_aw$sig($fill)"}
-      val ar_connect = aw_ar_lsigs.map(sig => f".S00_AXI_ar$sig(sh_ocl_bus.ar$sig)")
-      val ar_ignore = aw_ar_lsigs_ignore.map{case (sig, fill) => f".S00_AXI_ar$sig($fill)"}
+      val aw_connect =
+        aw_ar_lsigs.map(sig => f".S00_AXI_aw$sig(sh_ocl_bus.aw$sig)")
+      val aw_ignore = aw_ar_lsigs_ignore.map { case (sig, fill) =>
+        f".S00_AXI_aw$sig($fill)"
+      }
+      val ar_connect =
+        aw_ar_lsigs.map(sig => f".S00_AXI_ar$sig(sh_ocl_bus.ar$sig)")
+      val ar_ignore = aw_ar_lsigs_ignore.map { case (sig, fill) =>
+        f".S00_AXI_ar$sig($fill)"
+      }
       val w_connect = wl_sigs.map(sig => f".S00_AXI_w$sig(sh_ocl_bus.w$sig)")
       val r_connect = rl_sigs.map(sig => f".S00_AXI_r$sig(sh_ocl_bus.r$sig)")
       val b_connect = bl_sigs.map(sig => f".S00_AXI_b$sig(sh_ocl_bus.b$sig)")
-      (aw_connect ++ aw_ignore ++ ar_connect ++ ar_ignore ++ w_connect ++ r_connect ++ b_connect).mkString(",\n    ")
+      (aw_connect ++ aw_ignore ++ ar_connect ++ ar_ignore ++ w_connect ++ r_connect ++ b_connect)
+        .mkString(",\n    ")
     }
 
-
-    os.write(toPath,
+    os.write(
+      toPath,
       f"""
          |`include "cl_beethoven_top_defines.vh"
          |module cl_beethoven_top
@@ -517,41 +531,6 @@ object Shell {
          |//////////////////// Debug module /////////////////////////////////////
          |///////////////////////////////////////////////////////////////////////
          |
-         |//`ifndef DISABLE_VJTAG_DEBUG
-         |//
-         |//  cl_ila
-         |//  #(
-         |//    .DDR_A_PRESENT          (`DDR_A_PRESENT           )
-         |//  )
-         |//  CL_ILA
-         |//  (
-         |//    .aclk                   (gen_clk_main_a0          ),
-         |//    .drck                   (drck                     ),
-         |//    .shift                  (shift                    ),
-         |//    .tdi                    (tdi                      ),
-         |//    .update                 (update                   ),
-         |//    .sel                    (sel                      ),
-         |//    .tdo                    (tdo                      ),
-         |//    .tms                    (tms                      ),
-         |//    .tck                    (tck                      ),
-         |//    .runtest                (runtest                  ),
-         |//    .reset                  (reset                    ),
-         |//    .capture                (capture                  ),
-         |//    .bscanid_en             (bscanid_en               ),
-         |//    .sh_cl_dma_pcis_q       (sh_cl_dma_pcis_q         ),
-         |// `ifndef DDR_A_ABSENT
-         |//    .lcl_cl_sh_ddr         (lcl_cl_sh_ddr           )
-         |// `else
-         |//    .lcl_cl_sh_ddr         (axi_bus_tied             )
-         |// `endif
-         |//  );
-         |//
-         |//  cl_vio CL_VIO
-         |//  (
-         |//    .clk_extra_a1           (clk_extra_a1             )
-         |//  );
-         |//
-         |//`endif //  `ifndef DISABLE_VJTAG_DEBUG
          |
          |  //-----------------------------------------
          |  // Virtual JATG ILA Debug core example
@@ -594,11 +573,13 @@ object Shell {
          |
          |
          |endmodule
-         |""".stripMargin)
+         |""".stripMargin
+    )
   }
 
   def write_header(toPath: Path)(implicit p: Parameters): Unit = {
-    os.write.over(toPath,
+    os.write.over(
+      toPath,
       f"""`ifndef CL_BEETHOVEN_TOP_DEFINES
          |`define CL_BEETHOVEN_TOP_DEFINES
          |
@@ -614,7 +595,8 @@ object Shell {
          |`define NO_SDE_DEBUG_ILA
          |
          |`endif
-         |""".stripMargin)
+         |""".stripMargin
+    )
 
   }
 }

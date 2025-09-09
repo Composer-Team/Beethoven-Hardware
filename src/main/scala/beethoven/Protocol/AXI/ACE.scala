@@ -42,16 +42,29 @@ class ACE(param: MasterPortParams) extends AXI4Compat(param, 16) {
   val cddata = Output(UInt(dataBits.W))
   val cdlast = Output(Bool())
 
-  /**
-   * RESET REQUIREMENTS:
-   * When reset is driven, rack, wack, crvalid and cdvalid must be low
-   */
+  /** RESET REQUIREMENTS: When reset is driven, rack, wack, crvalid and cdvalid
+    * must be low
+    */
   val rack = Output(Bool())
   val wack = Output(Bool())
 
   override def initFromMasterLow(): Unit = {
     super.initFromMasterLow()
-    Seq(arsnoop, ardomain, arbar, awsnoop, awdomain, awbar, acready, crvalid, crresp, cdvalid, cddata, cdlast,
-      rack, wack) foreach (_ := 0.U)
+    Seq(
+      arsnoop,
+      ardomain,
+      arbar,
+      awsnoop,
+      awdomain,
+      awbar,
+      acready,
+      crvalid,
+      crresp,
+      cdvalid,
+      cddata,
+      cdlast,
+      rack,
+      wack
+    ) foreach (_ := 0.U)
   }
 }

@@ -1,6 +1,11 @@
 package basic
 
-import beethoven.{AcceleratorConfig, AcceleratorSystemConfig, ReadChannelConfig, WriteChannelConfig}
+import beethoven.{
+  AcceleratorConfig,
+  AcceleratorSystemConfig,
+  ReadChannelConfig,
+  WriteChannelConfig
+}
 import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2Platform
 import chisel3._
 import chisel3.util._
@@ -27,12 +32,15 @@ class VectorAdd extends Module {
 }
 
 class VectorAddCore()(implicit p: Parameters) extends AcceleratorCore {
-  val my_io = BeethovenIO(new AccelCommand("vector_add") {
-    val vec_a_addr = Address()
-    val vec_b_addr = Address()
-    val vec_out_addr = Address()
-    val vector_length = UInt(32.W)
-  }, EmptyAccelResponse())
+  val my_io = BeethovenIO(
+    new AccelCommand("vector_add") {
+      val vec_a_addr = Address()
+      val vec_b_addr = Address()
+      val vec_out_addr = Address()
+      val vector_length = UInt(32.W)
+    },
+    EmptyAccelResponse()
+  )
 
   val vec_a_reader = getReaderModule("vec_a")
   val vec_b_reader = getReaderModule("vec_b")
@@ -43,9 +51,8 @@ class VectorAddCore()(implicit p: Parameters) extends AcceleratorCore {
   // from our previously defined module
   val dut = Module(new VectorAdd())
 
-  /**
-   * provide sane default values
-   */
+  /** provide sane default values
+    */
   my_io.req.ready := false.B
   my_io.resp.valid := false.B
   // .fire is a Chisel-ism for "ready && valid"
@@ -71,63 +78,86 @@ class VectorAddCore()(implicit p: Parameters) extends AcceleratorCore {
   dut.io.vec_out <> vec_out_writer.dataChannel.data
 
   // state machine
-  val s_idle :: s_working :: s_finish :: Nil =  Enum(3)
+  val s_idle :: s_working :: s_finish :: Nil = Enum(3)
   val state = RegInit(s_idle)
 
-  when (state === s_idle) {
+  when(state === s_idle) {
     my_io.req.ready := vec_a_reader.requestChannel.ready &&
       vec_b_reader.requestChannel.ready &&
       vec_out_writer.requestChannel.ready
-    when (my_io.req.fire) {
+    when(my_io.req.fire) {
       state := s_working
     }
   }.elsewhen(state === s_working) {
     // when the writer has finished writing the final datum,
     // isFlushed will be driven high
-    when (vec_out_writer.dataChannel.isFlushed) {
+    when(vec_out_writer.dataChannel.isFlushed) {
       state := s_finish
     }
   }.otherwise {
     my_io.resp.valid := true.B
-    when (my_io.resp.fire) {
+    when(my_io.resp.fire) {
       state := s_idle
     }
   }
 }
 
-class VecAddConfig extends AcceleratorConfig(
-  List(AcceleratorSystemConfig(
-    nCores = 12,
-    name = "myVectorAdd",
-    moduleConstructor = ModuleBuilder(p => new VectorAddCore()(p)),
-    memoryChannelConfig = List(
-      ReadChannelConfig("vec_a", dataBytes = 4),
-      ReadChannelConfig("vec_b", dataBytes = 4),
-      WriteChannelConfig("vec_out", dataBytes = 4)
+class VecAddConfig
+    extends AcceleratorConfig(
+      List(
+        AcceleratorSystemConfig(
+          nCores = 1,
+          name = "myVectorAdd",
+          moduleConstructor = ModuleBuilder(p => new VectorAddCore()(p)),
+          memoryChannelConfig = List(
+            ReadChannelConfig("vec_a", dataBytes = 4),
+            ReadChannelConfig("vec_b", dataBytes = 4),
+            WriteChannelConfig("vec_out", dataBytes = 4)
+          )
+        ),
+        new DMAHelperConfig,
+        new MemsetHelperConfig(4)
+      )
     )
-  ), new DMAHelperConfig, new MemsetHelperConfig(4)) 
-)
 
-object VectorAddConfig extends BeethovenBuild(
-  new VecAddConfig,
-  buildMode = BuildMode.Simulation,
-  platform = new AWSF2Platform())
+object VectorAddConfig
+    extends BeethovenBuild(
+      new VecAddConfig,
+      buildMode = BuildMode.Simulation,
+      platform = new AWSF2Platform()
+    )
 
-class VecVerilogConfig extends AcceleratorConfig(
-    AcceleratorSystemConfig(
-    nCores = 12,
-    name = "myVectorAdd",
-    moduleConstructor = new BlackboxBuilderCustom(
-        new AccelCommand("vector_add") {
-        val vec_a_addr = UInt(32.W)
-        val vec_b_addr = UInt(32.W)
-        val vec_out_addr = UInt(32.W)
-        val vector_length = UInt(32.W)
-  }, EmptyAccelResponse()),
-    memoryChannelConfig = List(
-      ReadChannelConfig("vec_a", dataBytes = 4),
-      ReadChannelConfig("vec_b", dataBytes = 4),
-      WriteChannelConfig("vec_out", dataBytes = 4)
+
+class VecVerilogCmd extends AccelCommand("vector_add") {
+  val vec_a_addr = UInt(32.W)
+  val vec_b_addr = UInt(32.W)
+  val vec_out_addr = UInt(32.W)
+  val vector_length = UInt(32.W)
+}
+class VecVerilogConfig
+    extends AcceleratorConfig(
+      AcceleratorSystemConfig(
+        nCores = 1,
+        name = "myVectorAdd",
+        moduleConstructor = new BlackboxBuilderCustom(
+          Seq(
+            BeethovenIOInterface(
+              new VecVerilogCmd,
+              EmptyAccelResponse()
+            )
+          ), os.pwd / "src" / "test" / "verilog" / "systolic"
+        ),
+        memoryChannelConfig = List(
+          ReadChannelConfig("vec_a", dataBytes = 4),
+          ReadChannelConfig("vec_b", dataBytes = 4),
+          WriteChannelConfig("vec_out", dataBytes = 4)
+        )
+      )
     )
+
+object VecVerilogRunner
+    extends BeethovenBuild(
+      new VecVerilogConfig(),
+      platform = new AWSF2Platform,
+      buildMode = BuildMode.Simulation
     )
-)

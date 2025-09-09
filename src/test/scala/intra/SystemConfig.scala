@@ -58,5 +58,9 @@ object SystemConfig extends BeethovenBuild(new SystemConfig(6),
   platform = new AWSF2Platform())
 
 object SystemConfig2 extends BeethovenBuild(new SystemConfig(1),
-  buildMode = BuildMode.Simulation,
+  buildMode = BuildMode.Synthesis,
   platform = new AWSF2Platform())
+
+object SystemConfigKria extends BeethovenBuild(new SystemConfig(1),
+buildMode = BuildMode.Synthesis,
+platform = new KriaPlatform())

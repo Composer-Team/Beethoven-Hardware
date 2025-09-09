@@ -25,81 +25,159 @@ package object RoCC {
   }
 
   object RoCCSlaveParams {
-    def core(systemID: Int, coreID: Int): RoCCSlaveParams = RoCCSlaveParams(Seq((systemID, (coreID, coreID))))
+    def core(systemID: Int, coreID: Int): RoCCSlaveParams = RoCCSlaveParams(
+      Seq((systemID, (coreID, coreID)))
+    )
   }
 
-  case class RoccEdge(down: RoccMasterParams, up: RoCCSlaveParams, p: Parameters, si: SourceInfo)
+  case class RoccEdge(
+      down: RoccMasterParams,
+      up: RoCCSlaveParams,
+      p: Parameters,
+      si: SourceInfo
+  )
 
-
-  object RoccNodeImp extends SimpleNodeImp[RoccMasterParams, RoCCSlaveParams, RoccEdge, RoccExchange] {
-    override def edge(pd: RoccMasterParams, pu: RoCCSlaveParams, p: config.Parameters, sourceInfo: SourceInfo): RoccEdge = RoccEdge(pd, pu, p, sourceInfo)
+  object RoccNodeImp
+      extends SimpleNodeImp[
+        RoccMasterParams,
+        RoCCSlaveParams,
+        RoccEdge,
+        RoccExchange
+      ] {
+    override def edge(
+        pd: RoccMasterParams,
+        pu: RoCCSlaveParams,
+        p: config.Parameters,
+        sourceInfo: SourceInfo
+    ): RoccEdge = RoccEdge(pd, pu, p, sourceInfo)
 
     override def bundle(e: RoccEdge): RoccExchange = new RoccExchange
 
-    override def render(e: RoccEdge): RenderedEdge = RenderedEdge(colour = "#00ff00")
+    override def render(e: RoccEdge): RenderedEdge =
+      RenderedEdge(colour = "#00ff00")
   }
 
+  abstract class RoCCAdapterNode(
+      dFn: RoccMasterParams => RoccMasterParams,
+      uFn: RoCCSlaveParams => RoCCSlaveParams
+  )(implicit valName: ValName)
+      extends AdapterNode(RoccNodeImp)(dFn, uFn)
 
-  abstract class RoCCAdapterNode(dFn: RoccMasterParams => RoccMasterParams, uFn: RoCCSlaveParams => RoCCSlaveParams)(implicit valName: ValName) extends AdapterNode(RoccNodeImp)(dFn, uFn)
-
-  case class AXIToRoccNode(wcorrupt: Boolean = true)(implicit valName: ValName, p: Parameters) extends MixedAdapterNode(AXI4Imp, RoccNodeImp)(
-    dFn = { _ => RoccMasterParams() },
-    uFn = { _ =>
-      AXI4SlavePortParameters(
-        slaves = Seq(AXI4SlaveParameters(
-          address = Seq(AddressSet(platform.frontBusBaseAddress, platform.frontBusAddressMask)),
-          regionType = RegionType.IDEMPOTENT,
-          supportsWrite = TransferSizes(4, 4 * 5),
-          supportsRead = TransferSizes(4, 4 * 5),
-          interleavedId = Some(1)
-        )),
-        beatBytes = 4
+  case class AXIToRoccNode(wcorrupt: Boolean = true)(implicit
+      valName: ValName,
+      p: Parameters
+  ) extends MixedAdapterNode(AXI4Imp, RoccNodeImp)(
+        dFn = { _ => RoccMasterParams() },
+        uFn = { _ =>
+          AXI4SlavePortParameters(
+            slaves = Seq(
+              AXI4SlaveParameters(
+                address = Seq(
+                  AddressSet(
+                    platform.frontBusBaseAddress,
+                    platform.frontBusAddressMask
+                  )
+                ),
+                regionType = RegionType.IDEMPOTENT,
+                supportsWrite = TransferSizes(4, 4 * 5),
+                supportsRead = TransferSizes(4, 4 * 5),
+                interleavedId = Some(1)
+              )
+            ),
+            beatBytes = 4
+          )
+        }
       )
-    })
 
-  case class TLToRoccNode(wcorrupt: Boolean = true)(implicit valName: ValName, p: Parameters) extends MixedAdapterNode(TLImp, RoccNodeImp)(
-    dFn = { _ => RoccMasterParams() },
-    uFn = { _ =>
-      TLSlavePortParameters.v1(
-        managers = Seq(TLSlaveParameters.v1(
-          address = Seq(AddressSet(platform.frontBusBaseAddress, platform.frontBusAddressMask)),
-          supportsGet = TransferSizes(4, 4 * 8),
-          supportsPutFull = TransferSizes(4, 4 * 8)
-        )), beatBytes = 4, endSinkId = 1
+  case class TLToRoccNode(wcorrupt: Boolean = true)(implicit
+      valName: ValName,
+      p: Parameters
+  ) extends MixedAdapterNode(TLImp, RoccNodeImp)(
+        dFn = { _ => RoccMasterParams() },
+        uFn = { _ =>
+          TLSlavePortParameters.v1(
+            managers = Seq(
+              TLSlaveParameters.v1(
+                address = Seq(
+                  AddressSet(
+                    platform.frontBusBaseAddress,
+                    platform.frontBusAddressMask
+                  )
+                ),
+                supportsGet = TransferSizes(4, 4 * 8),
+                supportsPutFull = TransferSizes(4, 4 * 8)
+              )
+            ),
+            beatBytes = 4,
+            endSinkId = 1
+          )
+        }
       )
-    })
 
-  class RoCCBufferNode(implicit valName: ValName) extends RoCCAdapterNode(
-    dFn = { mp => mp },
-    uFn = { sp => sp })
+  class RoCCBufferNode(implicit valName: ValName)
+      extends RoCCAdapterNode(dFn = { mp => mp }, uFn = { sp => sp })
 
-  case class RoccIdentityNode()(implicit valName: ValName) extends IdentityNode(RoccNodeImp)()
+  case class RoccIdentityNode()(implicit valName: ValName)
+      extends IdentityNode(RoccNodeImp)()
 
-  case class RoccManagerNode(params: RoCCSlaveParams)(implicit valName: ValName) extends SinkNode(RoccNodeImp)(Seq(params))
+  case class RoccManagerNode(params: RoCCSlaveParams)(implicit valName: ValName)
+      extends SinkNode(RoccNodeImp)(Seq(params))
 
-  case class RoccClientNode(params: RoccMasterParams)(implicit valName: ValName) extends SourceNode(RoccNodeImp)(Seq(params))
+  case class RoccClientNode(params: RoccMasterParams)(implicit valName: ValName)
+      extends SourceNode(RoccNodeImp)(Seq(params))
 
-  case class RoccNexusNode(dFn: Seq[RoccMasterParams] => RoccMasterParams,
-                           uFn: Seq[RoCCSlaveParams] => RoCCSlaveParams
-                          )(implicit valName: ValName) extends NexusNode(RoccNodeImp)(dFn, uFn)
+  case class RoccNexusNode(
+      dFn: Seq[RoccMasterParams] => RoccMasterParams,
+      uFn: Seq[RoCCSlaveParams] => RoCCSlaveParams
+  )(implicit valName: ValName)
+      extends NexusNode(RoccNodeImp)(dFn, uFn)
 
+  case class RoccCompositeNexusNode(
+      inNode: RoccNexusNode,
+      outNode: RoccNexusNode
+  ) extends InwardNodeHandle[
+        RoccMasterParams,
+        RoCCSlaveParams,
+        RoccEdge,
+        RoccExchange
+      ]
+      with OutwardNodeHandle[
+        RoccMasterParams,
+        RoCCSlaveParams,
+        RoccEdge,
+        RoccExchange
+      ]
+      with RoccNode {
 
-  case class RoccCompositeNexusNode(inNode: RoccNexusNode, outNode: RoccNexusNode)
-    extends InwardNodeHandle[RoccMasterParams, RoCCSlaveParams, RoccEdge, RoccExchange]
-    with OutwardNodeHandle[RoccMasterParams, RoCCSlaveParams, RoccEdge, RoccExchange]
-    with RoccNode {
+    override def inward
+        : InwardNode[RoccMasterParams, RoCCSlaveParams, RoccExchange] = inNode
 
-    override def inward: InwardNode[RoccMasterParams, RoCCSlaveParams, RoccExchange] = inNode
+    override def inner: InwardNodeImp[
+      RoccMasterParams,
+      RoCCSlaveParams,
+      RoccEdge,
+      RoccExchange
+    ] = inNode.inner
 
-    override def inner: InwardNodeImp[RoccMasterParams, RoCCSlaveParams, RoccEdge, RoccExchange] = inNode.inner
+    override def outward
+        : OutwardNode[RoccMasterParams, RoCCSlaveParams, RoccExchange] = outNode
 
-    override def outward: OutwardNode[RoccMasterParams, RoCCSlaveParams, RoccExchange] = outNode
-
-    override def outer: OutwardNodeImp[RoccMasterParams, RoCCSlaveParams, RoccEdge, RoccExchange] = outNode.outer
+    override def outer: OutwardNodeImp[
+      RoccMasterParams,
+      RoCCSlaveParams,
+      RoccEdge,
+      RoccExchange
+    ] = outNode.outer
   }
 
-  type RoccNode = NodeHandle[RoccMasterParams, RoCCSlaveParams, RoccEdge, RoccExchange, RoccMasterParams, RoCCSlaveParams, RoccEdge, RoccExchange]
+  type RoccNode = NodeHandle[
+    RoccMasterParams,
+    RoCCSlaveParams,
+    RoccEdge,
+    RoccExchange,
+    RoccMasterParams,
+    RoCCSlaveParams,
+    RoccEdge,
+    RoccExchange
+  ]
 }
-
-
-

@@ -14,7 +14,7 @@ package object Annotators {
   private[Annotators] def get_sed_inline_opt(): Seq[String] = {
     get_os() match {
       case "Darwin" => Seq("-I", "")
-      case "Linux" => Seq("-i")
+      case "Linux"  => Seq("-i")
       case _ => throw new Exception("Couldn't figure out OS for " + get_os())
     }
   }

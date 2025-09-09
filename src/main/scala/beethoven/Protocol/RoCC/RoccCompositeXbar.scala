@@ -21,10 +21,14 @@ class RoccCompositeXbar(implicit p: Parameters) extends LazyModule {
 object RoccCompositeXbar {
   private var named_idx = 0
   private var rocc_composite_xbar_idx = 0
-  def apply()(implicit p: Parameters): RoccCompositeNexusNode = LazyModuleWithFloorplan(new RoccCompositeXbar(), {
-    val id = rocc_composite_xbar_idx
-    rocc_composite_xbar_idx += 1
-    s"rocc_composite_xbar_$id"
-  }).node
-  def apply(name: String)(implicit p: Parameters): RoccCompositeNexusNode = LazyModuleWithFloorplan(new RoccCompositeXbar(), name).node
+  def apply()(implicit p: Parameters): RoccCompositeNexusNode =
+    LazyModuleWithFloorplan(
+      new RoccCompositeXbar(), {
+        val id = rocc_composite_xbar_idx
+        rocc_composite_xbar_idx += 1
+        s"rocc_composite_xbar_$id"
+      }
+    ).node
+  def apply(name: String)(implicit p: Parameters): RoccCompositeNexusNode =
+    LazyModuleWithFloorplan(new RoccCompositeXbar(), name).node
 }

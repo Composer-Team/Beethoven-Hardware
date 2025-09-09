@@ -15,6 +15,7 @@ import freechips.rocketchip.stage._
 import os._
 
 import java.util.regex._
+import firrtl.transforms.DeadCodeElimination
 
 class BeethovenChipStage extends Stage with Phase {
   override val shell = new Shell("beethoven-compile")
@@ -45,7 +46,19 @@ object BeethovenBuild {
   }
 
   private def filterFIRRTL(path: Path): Unit = {
-    os.proc(Seq("sed", "-i.backup", "-e", "1d", "-e", "/printf/d", "-e", "/assert/d", path.toString())).call()
+    os.proc(
+      Seq(
+        "sed",
+        "-i.backup",
+        "-e",
+        "1d",
+        "-e",
+        "/printf/d",
+        "-e",
+        "/assert/d",
+        path.toString()
+      )
+    ).call()
   }
 
   private[beethoven] var partitionModules: Seq[String] = Seq("BeethovenTop")
@@ -110,10 +123,12 @@ object BuildMode {
   case object Simulation extends BuildMode
 }
 
-class BeethovenBuild(config: AcceleratorConfig,
-                     platform: Platform,
-                     buildMode: BuildMode = BuildMode.Synthesis,
-                     additional_parameter: Option[PartialFunction[Any, Any]] = None) {
+class BeethovenBuild(
+    config: AcceleratorConfig,
+    platform: Platform,
+    buildMode: BuildMode = BuildMode.Synthesis,
+    additional_parameter: Option[PartialFunction[Any, Any]] = None
+) {
   final def main(args: Array[String]): Unit = {
     //    args.foreach(println(_))
 //    println("Running with " + Runtime.getRuntime.freeMemory() + "B memory")
@@ -129,14 +144,13 @@ class BeethovenBuild(config: AcceleratorConfig,
     os.remove.all(hw_build_dir)
     os.makeDir.all(hw_build_dir)
     val configWithBuildMode = {
-      val w = new WithBeethoven(
-        platform = platform).alterPartial {
-        case BuildModeKey => buildMode
+      val w = new WithBeethoven(platform = platform).alterPartial {
+        case BuildModeKey       => buildMode
         case AcceleratorSystems => config.configs
       }
       additional_parameter match {
         case Some(f) => w.alterPartial(f)
-        case None => w
+        case None    => w
       }
     }
     beethoven.platform(configWithBuildMode).platformCheck()
@@ -147,11 +161,16 @@ class BeethovenBuild(config: AcceleratorConfig,
           // if you want to get annotation output for debugging, uncomment the following line
           new EmitAllModulesAnnotation(classOf[VerilogEmitter]),
           new TargetDirAnnotation(hw_build_dir.toString()),
-          new TopModuleAnnotation(Class.forName("beethoven.Systems.BeethovenTop")),
+          new TopModuleAnnotation(
+            Class.forName("beethoven.Systems.BeethovenTop")
+          ),
           Generation.Stage.ConfigsAnnotation(configWithBuildMode),
           CustomDefaultMemoryEmission(MemoryNoInit),
-          CustomDefaultRegisterEmission(useInitAsPreset = false, disableRandomization = true),
-          RunFirrtlTransformAnnotation(new VerilogEmitter),
+          CustomDefaultRegisterEmission(
+            useInitAsPreset = false,
+            disableRandomization = true
+          ),
+          RunFirrtlTransformAnnotation(new VerilogEmitter)
 //          NoDCEAnnotation,
 //          NoConstantPropagationAnnotation
         )
@@ -160,21 +179,31 @@ class BeethovenBuild(config: AcceleratorConfig,
 
     os.remove.all(hw_build_dir / "firrtl_black_box_resource_files.f")
     val allChiselGeneratedSrcs = WalkPath(hw_build_dir)
-    val chiselGeneratedSrcs = allChiselGeneratedSrcs.
-      filter(a => !a.toString().contains("ShiftReg") && !a.toString().contains("Queue")).
-      filter(a => !a.toString().contains("txt"))
-    val shifts = allChiselGeneratedSrcs.filter(a => a.toString().contains("ShiftReg") || a.toString().contains("Queue"))
-
-    // --------------- Verilog Annotators ---------------
-    //    KeepHierarchy(targetDir / "BeethovenTop.v")
-//    partitionModules foreach println
-    val movedSrcs = beethoven.Generation.Annotators.UniqueMv(sourceList, hw_build_dir) :+ {
-      val s = hw_build_dir / "BeethovenAllShifts.v"
-      val stxts = shifts.map(a => os.read(a))
-      os.write(s, stxts.mkString("\n\n"))
-      shifts.foreach(os.remove(_))
-      s
+    val chiselGeneratedSrcs = allChiselGeneratedSrcs
+      .filter(a =>
+        !a.toString().contains("ShiftReg") && !a.toString().contains("Queue")
+      )
+      .filter(a => !a.toString().contains("txt"))
+    val shifts = allChiselGeneratedSrcs.filter(a =>
+      a.toString().contains("ShiftReg") || a.toString().contains("Queue")
+    )
+    config.configs.foreach { conf =>
+      conf.moduleConstructor match {
+        case a: BlackboxBuilderCustom =>
+          a.externalDependencies.getOrElse(Seq()).foreach { path =>
+            sourceList = sourceList.appended(path)
+          }
+        case _ => ;
+      }
     }
+    val movedSrcs =
+      beethoven.Generation.Annotators.UniqueMv(sourceList, hw_build_dir) :+ {
+        val s = hw_build_dir / "BeethovenAllShifts.v"
+        val stxts = shifts.map(a => os.read(a))
+        os.write(s, stxts.mkString("\n\n"))
+        shifts.foreach(os.remove(_))
+        s
+      }
 
     ConstraintGeneration.slrMappings.foreach { slrMapping =>
       crossBoundaryDisableList = crossBoundaryDisableList :+ slrMapping._1
@@ -182,21 +211,30 @@ class BeethovenBuild(config: AcceleratorConfig,
     if (crossBoundaryDisableList.nonEmpty && buildMode == BuildMode.Synthesis) {
       CrossBoundaryDisable(crossBoundaryDisableList, top_build_dir)
     }
-    if (configWithBuildMode(PlatformKey).platformType == PlatformType.FPGA &&
-      !configWithBuildMode(PlatformKey).isInstanceOf[AWSF1Platform]) {
+    if (
+      configWithBuildMode(PlatformKey).platformType == PlatformType.FPGA &&
+      !configWithBuildMode(PlatformKey).isInstanceOf[AWSF1Platform]
+    ) {
       val tc_axi = (0 until platform.extMem.nMemoryChannels) map { idx =>
         beethoven.Generation.Annotators.AnnotateXilinxInterface(
-          f"M0${idx}_AXI", (hw_build_dir / "BeethovenTop.v").toString(), XilinxInterface.AXI4)
+          f"M0${idx}_AXI",
+          (hw_build_dir / "BeethovenTop.v").toString(),
+          XilinxInterface.AXI4
+        )
         Some(f"M0${idx}_AXI")
       }
       // implies is AXI
       val tc_front = {
         beethoven.Generation.Annotators.AnnotateXilinxInterface(
-          "S00_AXI", (hw_build_dir / "BeethovenTop.v").toString(), XilinxInterface.AXI4)
+          "S00_AXI",
+          (hw_build_dir / "BeethovenTop.v").toString(),
+          XilinxInterface.AXI4
+        )
         Some("S00_AXI")
       }
 
-      val tcs = ((Seq(tc_front) ++ tc_axi) filter (_.isDefined) map (_.get)).mkString(":")
+      val tcs = ((Seq(tc_front) ++ tc_axi) filter (_.isDefined) map (_.get))
+        .mkString(":")
       Annotators.AnnotateTopClock(
         f"\\(\\* X_INTERFACE_PARAMETER = \"ASSOCIATED_BUSIF $tcs \" \\*\\)",
         hw_build_dir / "BeethovenTop.v"
@@ -204,11 +242,17 @@ class BeethovenBuild(config: AcceleratorConfig,
     }
 
     os.makeDir.all(top_build_dir)
-    os.write.over(top_build_dir / "cmake_srcs.cmake",
-      f"""set(SRCS ${movedSrcs.mkString("\n")}\n${chiselGeneratedSrcs.mkString("\n")})\n""")
+    os.write.over(
+      top_build_dir / "cmake_srcs.cmake",
+      f"""set(SRCS ${movedSrcs.mkString("\n")}\n${chiselGeneratedSrcs.mkString(
+          "\n"
+        )})\n"""
+    )
 //    println("wrote to " + gsrc_dir / "vcs_srcs.in")
-    os.write.over(top_build_dir / "vcs_srcs.in",
-      chiselGeneratedSrcs.mkString("\n") + "\n" + movedSrcs.mkString("\n"))
+    os.write.over(
+      top_build_dir / "vcs_srcs.in",
+      chiselGeneratedSrcs.mkString("\n") + "\n" + movedSrcs.mkString("\n")
+    )
     if (buildMode == BuildMode.Simulation)
       vcs.HarnessGenerator.generateHarness()(configWithBuildMode)
 
@@ -216,7 +260,10 @@ class BeethovenBuild(config: AcceleratorConfig,
       case BuildMode.Synthesis =>
         platform match {
           case pwpp: Platform with HasPostProccessorScript =>
-            pwpp.postProcessorMacro(configWithBuildMode, movedSrcs ++ chiselGeneratedSrcs)
+            pwpp.postProcessorMacro(
+              configWithBuildMode,
+              movedSrcs ++ chiselGeneratedSrcs
+            )
           case _ => ;
         }
       case _ => ;

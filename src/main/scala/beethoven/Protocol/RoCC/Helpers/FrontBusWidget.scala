@@ -22,13 +22,17 @@ class AXILWidgetModule(outer: FrontBusWidget) extends LazyModuleImp(outer) {
     val cmds = Decoupled(UInt(32.W))
     val resp = Flipped(Decoupled(UInt(32.W)))
 
-    val cache_prot = if (platform.hasDebugAXICACHEPROT) Some(Output(UInt(7.W))) else None
+    val cache_prot =
+      if (platform.hasDebugAXICACHEPROT) Some(Output(UInt(7.W))) else None
   })
-
 
   var allocated = 0
 
-  def genPulsedBoolWO(name: String, drive: DecoupledIO[Bool], init: Bool): Bool = {
+  def genPulsedBoolWO(
+      name: String,
+      drive: DecoupledIO[Bool],
+      init: Bool
+  ): Bool = {
     drive.ready := true.B
     val state = Reg(Bool())
     state.suggestName(f"PulsedState$name")
@@ -36,7 +40,7 @@ class AXILWidgetModule(outer: FrontBusWidget) extends LazyModuleImp(outer) {
     CppGeneration.addPreprocessorDefinition(name, addr)
     allocated += 1
     state := init
-    when (drive.fire) {
+    when(drive.fire) {
       state := drive.bits
     }
     state
@@ -59,7 +63,7 @@ class AXILWidgetModule(outer: FrontBusWidget) extends LazyModuleImp(outer) {
     val state = RegInit(init)
     state.suggestName(f"State${name}")
     dst.ready := true.B
-    when (dst.fire) {
+    when(dst.fire) {
       state := dst.bits
     }
 
@@ -71,15 +75,23 @@ class AXILWidgetModule(outer: FrontBusWidget) extends LazyModuleImp(outer) {
 
   val mcrio = outer.crFile.module.io.mcr
 
-  roccCmdFifo.io.enq.valid := genPulsedBoolWO("CMD_VALID", mcrio.write(0).map(_(0).asBool), false.B)
+  roccCmdFifo.io.enq.valid := genPulsedBoolWO(
+    "CMD_VALID",
+    mcrio.write(0).map(_(0).asBool),
+    false.B
+  )
   roccCmdFifo.io.enq.bits := genWO("CMD_BITS", mcrio.write(1), 0.U)
   genRO("CMD_READY", roccCmdFifo.io.enq.ready, mcrio.read(2))
 
   genRO("RESP_VALID", roccRespFifo.io.deq.valid, mcrio.read(3))
   genRO("RESP_BITS", roccRespFifo.io.deq.bits, mcrio.read(4))
-  roccRespFifo.io.deq.ready := genPulsedBoolWO("RESP_READY", mcrio.write(5).map(a => a(0).asBool), false.B)
+  roccRespFifo.io.deq.ready := genPulsedBoolWO(
+    "RESP_READY",
+    mcrio.write(5).map(a => a(0).asBool),
+    false.B
+  )
 
-  genRO("AXIL_DEBUG", 0xDEADCAFEL.U(32.W), mcrio.read(6))
+  genRO("AXIL_DEBUG", 0xdeadcafeL.U(32.W), mcrio.read(6))
 
   if (platform.hasDebugAXICACHEPROT) {
     val prot_cache = Wire(UInt(7.W))
@@ -89,6 +101,4 @@ class AXILWidgetModule(outer: FrontBusWidget) extends LazyModuleImp(outer) {
   io.cmds <> roccCmdFifo.io.deq
   roccRespFifo.io.enq <> io.resp
 
-
 }
-

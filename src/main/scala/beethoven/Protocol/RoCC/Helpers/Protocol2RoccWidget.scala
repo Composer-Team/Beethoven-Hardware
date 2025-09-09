@@ -26,15 +26,18 @@ abstract class MCRMapEntry {
   def permissions: Permissions
 }
 
-case class DecoupledSinkEntry(node: DecoupledIO[UInt], name: String) extends MCRMapEntry {
+case class DecoupledSinkEntry(node: DecoupledIO[UInt], name: String)
+    extends MCRMapEntry {
   val permissions = WriteOnly
 }
 
-case class DecoupledSourceEntry(node: DecoupledIO[UInt], name: String) extends MCRMapEntry {
+case class DecoupledSourceEntry(node: DecoupledIO[UInt], name: String)
+    extends MCRMapEntry {
   val permissions = ReadOnly
 }
 
-case class RegisterEntry(node: Data, name: String, permissions: Permissions) extends MCRMapEntry
+case class RegisterEntry(node: Data, name: String, permissions: Permissions)
+    extends MCRMapEntry
 
 class MCRFileMap {
   // DO NOT put the MMIOs in the first page. For unified memory systems this will result in null pointer dereferences
@@ -55,9 +58,9 @@ class MCRFileMap {
   def numRegs: Int = regList.size
 
   def bindRegs(mcrIO: MCRIO): Unit = regList.zipWithIndex foreach {
-    case (e: DecoupledSinkEntry, addr) => mcrIO.bindDecoupledSink(e, addr)
+    case (e: DecoupledSinkEntry, addr)   => mcrIO.bindDecoupledSink(e, addr)
     case (e: DecoupledSourceEntry, addr) => mcrIO.bindDecoupledSource(e, addr)
-    case (e: RegisterEntry, addr) => mcrIO.bindReg(e, addr)
+    case (e: RegisterEntry, addr)        => mcrIO.bindReg(e, addr)
   }
 
   def getCRdef(implicit p: Parameters): Seq[(String, String)] = {
@@ -69,8 +72,10 @@ class MCRFileMap {
   }
 }
 
-class MCRIO(numCRs: Int)(implicit p: Parameters) extends ParameterizedBundle()(p) {
-  val read = Vec(numCRs, Flipped(Decoupled(UInt((p(CmdRespBusWidthBytes) * 8).W))))
+class MCRIO(numCRs: Int)(implicit p: Parameters)
+    extends ParameterizedBundle()(p) {
+  val read =
+    Vec(numCRs, Flipped(Decoupled(UInt((p(CmdRespBusWidthBytes) * 8).W))))
   val write = Vec(numCRs, Decoupled(UInt((p(CmdRespBusWidthBytes) * 8).W)))
   val wstrb = Output(UInt(p(CmdRespBusWidthBytes).W))
 
@@ -95,12 +100,18 @@ class MCRIO(numCRs: Int)(implicit p: Parameters) extends ParameterizedBundle()(p
 
   def bindDecoupledSink(channel: DecoupledSinkEntry, addr: Int): Unit = {
     channel.node <> write(addr)
-    assert(read(addr).ready === false.B, "Can only write to this decoupled sink")
+    assert(
+      read(addr).ready === false.B,
+      "Can only write to this decoupled sink"
+    )
   }
 
   def bindDecoupledSource(channel: DecoupledSourceEntry, addr: Int): Unit = {
     read(addr) <> channel.node
-    assert(write(addr).valid =/= true.B, "Can only read from this decoupled source")
+    assert(
+      write(addr).valid =/= true.B,
+      "Can only read from this decoupled source"
+    )
   }
 
 }
@@ -109,22 +120,40 @@ trait MCRFile {
   def getMCRIO: MCRIO
 }
 
-class Protocol2RoccWidget(numRegs: Int)(implicit p: Parameters) extends LazyModule with MCRFile {
-  require((platform.frontBusBaseAddress& 0x3FFL) == 0, "Platform: The defined front bus address must be aligned to 0x400 (1KB)")
-  val node = AXI4SlaveNode(portParams = Seq(AXI4SlavePortParameters(slaves = Seq(
-    AXI4SlaveParameters(
-      address = Seq(AddressSet(platform.frontBusBaseAddress, platform.frontBusAddressMask)),
-      supportsRead = TransferSizes(platform.frontBusBeatBytes),
-      supportsWrite = TransferSizes(platform.frontBusBeatBytes)
-    )),
-    beatBytes = platform.frontBusBeatBytes)))
+class Protocol2RoccWidget(numRegs: Int)(implicit p: Parameters)
+    extends LazyModule
+    with MCRFile {
+  require(
+    (platform.frontBusBaseAddress & 0x3ffL) == 0,
+    "Platform: The defined front bus address must be aligned to 0x400 (1KB)"
+  )
+  val node = AXI4SlaveNode(portParams =
+    Seq(
+      AXI4SlavePortParameters(
+        slaves = Seq(
+          AXI4SlaveParameters(
+            address = Seq(
+              AddressSet(
+                platform.frontBusBaseAddress,
+                platform.frontBusAddressMask
+              )
+            ),
+            supportsRead = TransferSizes(platform.frontBusBeatBytes),
+            supportsWrite = TransferSizes(platform.frontBusBeatBytes)
+          )
+        ),
+        beatBytes = platform.frontBusBeatBytes
+      )
+    )
+  )
   lazy val module = new MCRFileModuleAXI(this, numRegs)
 
   override def getMCRIO: MCRIO = module.io.mcr
 }
 
-
-class MCRFileModuleAXI(outer: Protocol2RoccWidget, numRegs: Int)(implicit p: Parameters) extends LazyModuleImp(outer) {
+class MCRFileModuleAXI(outer: Protocol2RoccWidget, numRegs: Int)(implicit
+    p: Parameters
+) extends LazyModuleImp(outer) {
 
   val io = IO(new Bundle {
     val mcr = new MCRIO(numRegs)
@@ -165,21 +194,21 @@ class MCRFileModuleAXI(outer: Protocol2RoccWidget, numRegs: Int)(implicit p: Par
     val len = Reg(in.aw.bits.len.cloneType)
     val id = Reg(in.aw.bits.id.cloneType)
     in.aw.ready := state === s_idle
-    when (in.w.fire) {
+    when(in.w.fire) {
       len := len - 1.U
     }
-    when (state === s_idle) {
+    when(state === s_idle) {
       val addr_skip = log2Up(platform.frontBusBeatBytes)
-      addr := in.aw.bits.addr(logNumRegs+addr_skip-1, addr_skip)
+      addr := in.aw.bits.addr(logNumRegs + addr_skip - 1, addr_skip)
       len := in.aw.bits.len
-      when (in.aw.fire) {
+      when(in.aw.fire) {
         state := s_write
         id := in.aw.bits.id
       }
     }.elsewhen(state === s_write) {
       in.w.ready := true.B
       io.mcr.write(addr).valid := in.w.valid
-      when (in.w.fire) {
+      when(in.w.fire) {
         when(len === 0.U) {
           state := s_response
         }.otherwise {
@@ -188,14 +217,14 @@ class MCRFileModuleAXI(outer: Protocol2RoccWidget, numRegs: Int)(implicit p: Par
       }
     }.elsewhen(state === s_drain) {
       in.w.ready := true.B
-      when (in.w.fire && len === 0.U) {
+      when(in.w.fire && len === 0.U) {
         state := s_response
       }
     }.otherwise {
       in.b.valid := true.B
       in.b.bits.resp := 0.U
       in.b.bits.id := id
-      when (in.b.fire) {
+      when(in.b.fire) {
         state := s_idle
       }
     }
@@ -213,16 +242,16 @@ class MCRFileModuleAXI(outer: Protocol2RoccWidget, numRegs: Int)(implicit p: Par
     in.r.bits.resp := 0.U
     in.r.bits.data := 0.U
 
-    when (in.r.fire) {
+    when(in.r.fire) {
       len := len - 1.U
     }
-    when (state === s_idle) {
+    when(state === s_idle) {
       in.ar.ready := true.B
       val addr_skip = log2Up(platform.frontBusBeatBytes)
-      addr := in.ar.bits.addr(logNumRegs+addr_skip-1, addr_skip)
+      addr := in.ar.bits.addr(logNumRegs + addr_skip - 1, addr_skip)
       len := in.ar.bits.len
       id := in.ar.bits.id
-      when (in.ar.fire) {
+      when(in.ar.fire) {
         state := s_read
       }
     }.elsewhen(state === s_read) {
@@ -230,11 +259,14 @@ class MCRFileModuleAXI(outer: Protocol2RoccWidget, numRegs: Int)(implicit p: Par
       if (platform.frontBusBeatBytes == 4) {
         in.r.bits.data := io.mcr.read(addr).bits
       } else {
-        in.r.bits.data := Cat(0.U((8*(platform.frontBusBeatBytes-4)).W), io.mcr.read(addr).bits)
+        in.r.bits.data := Cat(
+          0.U((8 * (platform.frontBusBeatBytes - 4)).W),
+          io.mcr.read(addr).bits
+        )
       }
       io.mcr.read(addr).ready := in.r.ready
-      when (in.r.fire) {
-        when (len === 0.U) {
+      when(in.r.fire) {
+        when(len === 0.U) {
           state := s_idle
         }.otherwise {
           state := s_drain
@@ -242,11 +274,10 @@ class MCRFileModuleAXI(outer: Protocol2RoccWidget, numRegs: Int)(implicit p: Par
       }
     }.elsewhen(state === s_drain) {
       in.r.valid := true.B
-      in.r.bits.data := 0xABCDABCDL.U
-      when (len === 0.U && in.r.fire) {
+      in.r.bits.data := 0xabcdabcdL.U
+      when(len === 0.U && in.r.fire) {
         state := s_idle
       }
     }
   }
 }
-

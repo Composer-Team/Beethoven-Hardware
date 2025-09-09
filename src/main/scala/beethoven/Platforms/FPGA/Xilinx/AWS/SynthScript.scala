@@ -4,7 +4,8 @@ import os.Path
 
 object SynthScript {
   def write(to_path: Path): Unit = {
-    os.write.over(to_path,
+    os.write.over(
+      to_path,
       f"""
          |source $${HDK_SHELL_DIR}/build/scripts/synth_cl_header.tcl
          |
@@ -138,6 +139,7 @@ object SynthScript {
          |
          |# Common footer
          |source $${HDK_SHELL_DIR}/build/scripts/synth_cl_footer.tcl
-         |""".stripMargin)
+         |""".stripMargin
+    )
   }
 }

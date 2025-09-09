@@ -7,15 +7,14 @@ import chisel3.util._
 import chisel3._
 import freechips.rocketchip.diplomacy._
 
-
 class AXIToRocc(implicit p: Parameters) extends LazyModule {
   val node = AXIToRoccNode()
   lazy val module = new LazyModuleImp(this) {
     val in = node.in(0)._1
     val out = node.out(0)._1
 
-    //this should eventually made parameterizable to the nasti width, but the nasti width is currently way wider
-    //than the data width we get
+    // this should eventually made parameterizable to the nasti width, but the nasti width is currently way wider
+    // than the data width we get
     val nBeats = 5 // ((5 * 32).toFloat / bus_bits).ceil.toInt
     val bitsBuffer = Reg(Vec(nBeats, UInt(32.W)))
 
@@ -120,7 +119,7 @@ class AXIToRocc(implicit p: Parameters) extends LazyModule {
       in.r.bits.id := read_id
       in.r.bits.last := read_count === read_len
       in.r.bits.resp := 0.U
-      in.r.bits.data := 0xFFFFFFFFL.U
+      in.r.bits.data := 0xffffffffL.U
       when(in.r.fire) {
         read_count := read_count + 1.U
         when(read_count === read_len) {
@@ -133,9 +132,11 @@ class AXIToRocc(implicit p: Parameters) extends LazyModule {
 
 object AXIToRocc {
   private var axi_to_rocc_idx = 0
-  def apply()(implicit p: Parameters): AXIToRoccNode = LazyModuleWithFloorplan(new AXIToRocc(), {
-    val id = axi_to_rocc_idx
-    axi_to_rocc_idx += 1
-    f"AXIToRocc$id"
-  }).node
+  def apply()(implicit p: Parameters): AXIToRoccNode = LazyModuleWithFloorplan(
+    new AXIToRocc(), {
+      val id = axi_to_rocc_idx
+      axi_to_rocc_idx += 1
+      f"AXIToRocc$id"
+    }
+  ).node
 }

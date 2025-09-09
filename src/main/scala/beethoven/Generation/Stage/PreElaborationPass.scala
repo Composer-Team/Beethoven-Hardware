@@ -14,7 +14,6 @@ import freechips.rocketchip.stage.RocketChipOptions
 import freechips.rocketchip.stage.phases.{Checks, TargetDirKey}
 import freechips.rocketchip.util.HasRocketChipStageUtils
 
-
 case class ConfigsAnnotation(literalConfig: Any) extends NoTargetAnnotation
 
 class PreElaborationPass extends Phase with HasRocketChipStageUtils {
@@ -27,13 +26,18 @@ class PreElaborationPass extends Phase with HasRocketChipStageUtils {
     val stageOpts = view[StageOptions](annotations)
     val rOpts = view[RocketChipOptions](annotations)
     val topMod = rOpts.topModule.get
-    val config = annotations.filter(_.isInstanceOf[ConfigsAnnotation])(0).asInstanceOf[ConfigsAnnotation].literalConfig match {
-      case c: Config => c.alterPartial {
-        case TargetDirKey => stageOpts.targetDir
-      }
-      case p: Parameters => p.alterPartial {
-        case TargetDirKey => stageOpts.targetDir
-      }
+    val config = annotations
+      .filter(_.isInstanceOf[ConfigsAnnotation])(0)
+      .asInstanceOf[ConfigsAnnotation]
+      .literalConfig match {
+      case c: Config =>
+        c.alterPartial { case TargetDirKey =>
+          stageOpts.targetDir
+        }
+      case p: Parameters =>
+        p.alterPartial { case TargetDirKey =>
+          stageOpts.targetDir
+        }
     }
 
     val gen = () =>
@@ -47,8 +51,9 @@ class PreElaborationPass extends Phase with HasRocketChipStageUtils {
         }
       }
 
-    ChiselGeneratorAnnotation(gen) +: annotations :+ RunFirrtlTransformAnnotation(new Flatten)
+    ChiselGeneratorAnnotation(
+      gen
+    ) +: annotations :+ RunFirrtlTransformAnnotation(new Flatten)
   }
 
 }
-

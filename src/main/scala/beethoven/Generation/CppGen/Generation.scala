@@ -16,7 +16,6 @@ import os.Path
 
 import java.io.FileWriter
 
-
 object Generation {
   def genCPPHeader(top: BeethovenTop)(implicit p: Parameters): Unit = {
     val acc = p(AcceleratorSystems)
@@ -27,21 +26,29 @@ object Generation {
       (
         s"""
            |#ifdef SIM
-           |#define HW_IS_RESET_ACTIVE_HIGH ${if (platform.isActiveHighReset) 1 else 0}
+           |#define HW_IS_RESET_ACTIVE_HIGH ${if (platform.isActiveHighReset) 1
+          else 0}
            |#define NUM_DDR_CHANNELS ${actualChannels}
            |#endif
            |#define ALLOCATOR_SIZE_BYTES (0x${platform.physicalMemoryBytes.toHexString}L)
            |${if (!platform.hasDiscreteMemory) "#ifdef SIM" else ""}
            |""".stripMargin + "#define BEETHOVEN_USE_CUSTOM_ALLOC\n" +
           (if (!platform.hasDiscreteMemory) "#endif" else ""),
-        s"const uint8_t beethovenNumAddrBits = ${log2Up(platform.extMem.master.size)};")
+        s"const uint8_t beethovenNumAddrBits = ${log2Up(platform.extMem.master.size)};"
+      )
     }
-    val defines = safe_join(user_defs map { deff => s"const ${deff.ty} ${deff.name} = ${deff.value};" })
-    val enums = safe_join(user_enums map enumToCpp)
-    val cpp_defs = safe_join(user_cpp_defs map { ppd => s"#define ${ppd.ty} ${ppd.value}" })
-    val system_ids = safe_join(acc.filter(_.canReceiveSoftwareCommands) map { tup =>
-      s"const uint8_t ${tup.name}_ID = ${acc.indexWhere(_.name == tup.name)};"
+    val defines = safe_join(user_defs map { deff =>
+      s"const ${deff.ty} ${deff.name} = ${deff.value};"
     })
+    val enums = safe_join(user_enums map enumToCpp)
+    val cpp_defs = safe_join(user_cpp_defs map { ppd =>
+      s"#define ${ppd.ty} ${ppd.value}"
+    })
+    val system_ids = safe_join(
+      acc.filter(_.canReceiveSoftwareCommands) map { tup =>
+        s"const uint8_t ${tup.name}_ID = ${acc.indexWhere(_.name == tup.name)};"
+      }
+    )
     val hooks_dec_def = hook_defs map customCommandToCpp _
     val commandDeclarations = safe_join(hooks_dec_def.map(_._1))
     val commandDefinitions = safe_join(hooks_dec_def.map(_._2))
@@ -51,11 +58,11 @@ object Generation {
       // this next stuff is just for simulation
       def getVerilatorDtype(width: Int): String = {
         width match {
-          case x if x <= 8 => "CData"
+          case x if x <= 8  => "CData"
           case x if x <= 16 => "SData"
           case x if x <= 32 => "IData"
           case x if x <= 64 => "QData"
-          case _ => "ERROR"
+          case _            => "ERROR"
         }
       }
       def getSignedCIntType(width: Int): String = {
@@ -65,34 +72,50 @@ object Generation {
         else if (width <= 64) "int64_t"
         else throw new Exception("Type is too big")
       }
-      def getUnsignedCIntType(width: Int): String = "u" + getSignedCIntType(width)
+      def getUnsignedCIntType(width: Int): String =
+        "u" + getSignedCIntType(width)
       val addrWid = log2Up(platform.extMem.master.size)
       (
         s"""
            |static const uint64_t addrMask = 0x${addrSet.mask.toLong.toHexString};
-           |""".stripMargin
-        , if (platform.isInstanceOf[PlatformHasSeparateDMA] && p(BuildModeKey) != Simulation) "#define BEETHOVEN_HAS_DMA" else "", {
-        if (platform.memoryNChannels > 0) {
-          val idDtype = getVerilatorDtype(platform.extMem.master.idBits)
-          f"""
+           |""".stripMargin,
+        if (
+          platform.isInstanceOf[PlatformHasSeparateDMA] && p(
+            BuildModeKey
+          ) != Simulation
+        ) "#define BEETHOVEN_HAS_DMA"
+        else "", {
+          if (platform.memoryNChannels > 0) {
+            val idDtype = getVerilatorDtype(platform.extMem.master.idBits)
+            f"""
              |#ifdef SIM
-             |${if (platform.extMem.master.beatBytes < 8) "#define SIM_SMALL_MEM" else ""}
+             |${if (platform.extMem.master.beatBytes < 8)
+                "#define SIM_SMALL_MEM"
+              else ""}
              |#ifdef VERILATOR
              |#include <verilated.h>
-             |using BeethovenFrontBusAddr_t = ${getUnsignedCIntType(platform.frontBusAddressNBits)};
+             |using BeethovenFrontBusAddr_t = ${getUnsignedCIntType(
+                platform.frontBusAddressNBits
+              )};
              |using BeethovenMemIDDtype=$idDtype;
-             |${platform match {case pWithDMA: PlatformHasSeparateDMA => s"using BeethovenDMAIDtype=${getVerilatorDtype(pWithDMA.DMAIDBits)};"; case _ => ""}}
+             |${platform match {
+                case pWithDMA: PlatformHasSeparateDMA =>
+                  s"using BeethovenDMAIDtype=${getVerilatorDtype(pWithDMA.DMAIDBits)};";
+                case _ => ""
+              }}
              |#endif
              |#define DEFAULT_PL_CLOCK ${platform.clockRateMHz}
              |#define DATA_BUS_WIDTH ${platform.extMem.master.beatBytes * 8}
              |#endif
              |""".stripMargin
-        } else {
-          f"""
+          } else {
+            f"""
              |#ifdef SIM
              |#ifdef VERILATOR
              |#include <verilated.h>
-             |using BeethovenFrontBusAddr_t = ${getUnsignedCIntType(platform.frontBusAddressNBits)};
+             |using BeethovenFrontBusAddr_t = ${getUnsignedCIntType(
+                platform.frontBusAddressNBits
+              )};
              |#endif
              |#endif
              1|
@@ -100,19 +123,22 @@ object Generation {
              |#define DEFAULT_PL_CLOCK ${platform.clockRateMHz}
              |
              |""".stripMargin
+          }
         }
-      })
+      )
     }
-    val mmio_addr = "const uint64_t BeethovenMMIOOffset = 0x" + platform.frontBusBaseAddress.toHexString + "LL;"
+    val mmio_addr =
+      "const uint64_t BeethovenMMIOOffset = 0x" + platform.frontBusBaseAddress.toHexString + "LL;"
 
     os.makeDir.all(BeethovenBuild.top_build_dir / "beethoven")
-    val header = new FileWriter((BeethovenBuild.top_build_dir / "beethoven_hardware.h").toString())
-    header.write(
-      f"""
+    val header = new FileWriter(
+      (BeethovenBuild.top_build_dir / "beethoven_hardware.h").toString()
+    )
+    header.write(f"""
          |// Automatically generated header for Beethoven
          |
          |#ifdef BAREMETAL
-         |#include <beethoven/allocator/alloc_baremetal.h>
+         |#include <beethoven_baremetal/allocator/alloc_baremetal.h>
          |#else
          |#include <beethoven/allocator/alloc.h>
          |#endif
@@ -156,9 +182,10 @@ object Generation {
   """.stripMargin)
     header.close()
 
-    val src = new FileWriter((BeethovenBuild.top_build_dir / "beethoven_hardware.cc").toString())
-    src.write(
-      f"""
+    val src = new FileWriter(
+      (BeethovenBuild.top_build_dir / "beethoven_hardware.cc").toString()
+    )
+    src.write(f"""
          |#include "beethoven_hardware.h"
          |
          |beethoven::beethoven_pack_info pack_cfg(system_id_bits, core_id_bits);

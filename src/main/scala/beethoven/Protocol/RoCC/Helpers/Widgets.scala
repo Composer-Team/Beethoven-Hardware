@@ -30,7 +30,6 @@ abstract class WidgetModule(outer: Widget) extends LazyModuleImp(outer) {
 
   def numRegs = crRegistry.numRegs
 
-
   protected var wName: Option[String] = None
 
   def setWidgetName(n: String): Unit = {
@@ -38,10 +37,18 @@ abstract class WidgetModule(outer: Widget) extends LazyModuleImp(outer) {
   }
 
   def getWName: String = {
-    wName.getOrElse(throw new RuntimeException("Must build widgets with their companion object"))
+    wName.getOrElse(
+      throw new RuntimeException(
+        "Must build widgets with their companion object"
+      )
+    )
   }
 
-  def attach(reg: Data, name: String, permissions: Permissions = ReadWrite): Int = {
+  def attach(
+      reg: Data,
+      name: String,
+      permissions: Permissions = ReadWrite
+  ): Int = {
     crRegistry.allocate(RegisterEntry(reg, name, permissions))
   }
 
@@ -59,13 +66,19 @@ abstract class WidgetModule(outer: Widget) extends LazyModuleImp(outer) {
           genWOReg(b, name)
         }
       case v: Vec[_] =>
-        v.zipWithIndex.foreach({ case (elm, idx) => innerAttachIO(elm, s"${name}_$idx") })
+        v.zipWithIndex.foreach({ case (elm, idx) =>
+          innerAttachIO(elm, s"${name}_$idx")
+        })
       case r: Record =>
-        r.elements.foreach({ case (subName, elm) => innerAttachIO(elm, s"${name}_$subName") })
+        r.elements.foreach({ case (subName, elm) =>
+          innerAttachIO(elm, s"${name}_$subName")
+        })
       case _ => new RuntimeException("Cannot bind to this sort of node...")
     }
 
-    io.elements.foreach({ case (name, elm) => innerAttachIO(elm, s"$prefix$name") })
+    io.elements.foreach({ case (name, elm) =>
+      innerAttachIO(elm, s"$prefix$name")
+    })
   }
 
   def attachDecoupledSink(channel: DecoupledIO[UInt], name: String): Int = {
@@ -76,7 +89,11 @@ abstract class WidgetModule(outer: Widget) extends LazyModuleImp(outer) {
     crRegistry.allocate(DecoupledSourceEntry(channel, name))
   }
 
-  def genAndAttachQueue(channel: DecoupledIO[UInt], name: String, depth: Int = 2): DecoupledIO[UInt] = {
+  def genAndAttachQueue(
+      channel: DecoupledIO[UInt],
+      name: String,
+      depth: Int = 2
+  ): DecoupledIO[UInt] = {
     val enq = Wire(channel.cloneType)
     channel <> Queue(enq, entries = depth)
     attachDecoupledSink(enq, name)
@@ -84,13 +101,14 @@ abstract class WidgetModule(outer: Widget) extends LazyModuleImp(outer) {
   }
 
   def genAndAttachReg[T <: Data](
-                                  wire: T,
-                                  name: String,
-                                  default: Option[T] = None,
-                                  masterDriven: Boolean = true): T = {
+      wire: T,
+      name: String,
+      default: Option[T] = None,
+      masterDriven: Boolean = true
+  ): T = {
     require(wire.getWidth <= nastiXDataBits)
     val reg = default match {
-      case None => Reg(wire.cloneType)
+      case None       => Reg(wire.cloneType)
       case Some(init) => RegInit(init)
     }
     if (masterDriven) wire := reg else reg := wire
@@ -99,15 +117,17 @@ abstract class WidgetModule(outer: Widget) extends LazyModuleImp(outer) {
     reg
   }
 
-  def genWOReg[T <: Data](wire: T, name: String): T = genAndAttachReg(wire, name)
+  def genWOReg[T <: Data](wire: T, name: String): T =
+    genAndAttachReg(wire, name)
 
-  def genROReg[T <: Data](wire: T, name: String): T = genAndAttachReg(wire, name, masterDriven = false)
+  def genROReg[T <: Data](wire: T, name: String): T =
+    genAndAttachReg(wire, name, masterDriven = false)
 
   def genWORegInit[T <: Data](wire: T, name: String, default: T): T =
     genAndAttachReg(wire, name, Some(default))
 
   def genRORegInit[T <: Data](wire: T, name: String, default: T): T =
-    genAndAttachReg(wire, name, Some(default), masterDriven=false)
+    genAndAttachReg(wire, name, Some(default), masterDriven = false)
 
   def genCRFile(): Unit = {
     crRegistry.bindRegs(outer.crFile.getMCRIO)
@@ -117,8 +137,11 @@ abstract class WidgetModule(outer: Widget) extends LazyModuleImp(outer) {
   // Returns a word addresses
   def getCRAddr(name: String): Int = {
     require(_finalized, "Must build Widgets with their companion object")
-    crRegistry.lookupAddress(name).getOrElse(
-      throw new RuntimeException(s"Could not find CR:$name in widget: $wName"))
+    crRegistry
+      .lookupAddress(name)
+      .getOrElse(
+        throw new RuntimeException(s"Could not find CR:$name in widget: $wName")
+      )
   }
 }
 

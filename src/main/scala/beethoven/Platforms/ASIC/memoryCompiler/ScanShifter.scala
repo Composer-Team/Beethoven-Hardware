@@ -8,8 +8,8 @@ class ScanShifter(l: Int, w: Int) extends Module {
   })
   val acc_wires = Wire(Vec(l, UInt(w.W)))
   acc_wires(0) := io.in
-  (1 until l) foreach {i =>
-    acc_wires(i) := RegNext(acc_wires(i-1))
+  (1 until l) foreach { i =>
+    acc_wires(i) := RegNext(acc_wires(i - 1))
   }
   io.out := acc_wires
 }

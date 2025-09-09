@@ -6,18 +6,31 @@ import beethoven.MemoryStreams.{HasMemoryInterface, MemoryIOBundle}
 import beethoven.common.ShiftReg
 import chipsalliance.rocketchip.config.Parameters
 
-private class SRMMHelper(nReadPorts: Int,
-                         nWritePorts: Int,
-                         nReadWritePorts: Int,
-                         nRows: Int,
-                         dataWidth: Int,
-                         latency: Int)(implicit p: Parameters) extends Module {
-  val mio = IO(new MemoryIOBundle(nReadPorts, nWritePorts, nReadWritePorts, log2Up(nRows), dataWidth, false))
+private class SRMMHelper(
+    nReadPorts: Int,
+    nWritePorts: Int,
+    nReadWritePorts: Int,
+    nRows: Int,
+    dataWidth: Int,
+    latency: Int
+)(implicit p: Parameters)
+    extends Module {
+  val mio = IO(
+    new MemoryIOBundle(
+      nReadPorts,
+      nWritePorts,
+      nReadWritePorts,
+      log2Up(nRows),
+      dataWidth,
+      false
+    )
+  )
   val cmem = SyncReadMem(nRows, UInt(dataWidth.W))
   dontTouch(mio)
   (0 until nReadWritePorts) foreach { port_idx =>
     val pidx = mio.getReadWritePortIdx(port_idx)
-    val readDat = cmem.read(mio.addr(pidx), mio.chip_select(pidx) && mio.read_enable(pidx))
+    val readDat =
+      cmem.read(mio.addr(pidx), mio.chip_select(pidx) && mio.read_enable(pidx))
     when(mio.chip_select(pidx)) {
       when(!mio.read_enable(pidx)) {
         cmem.write(mio.addr(pidx), mio.data_in(pidx))
@@ -41,7 +54,8 @@ private class SRMMHelper(nReadPorts: Int,
 
   (0 until nReadPorts) foreach { port_idx =>
     val pidx = mio.getReadPortIdx(port_idx)
-    val readDat = cmem.read(mio.addr(pidx), mio.chip_select(pidx) && mio.read_enable(pidx))
+    val readDat =
+      cmem.read(mio.addr(pidx), mio.chip_select(pidx) && mio.read_enable(pidx))
     if (latency == 1) {
       mio.data_out(pidx) := readDat
     } else {
@@ -50,14 +64,38 @@ private class SRMMHelper(nReadPorts: Int,
   }
 }
 
-class SyncReadMemMem(nReadPorts: Int,
-                     nWritePorts: Int,
-                     nReadWritePorts: Int,
-                     nRows: Int, dataWidth: Int, latency: Int)(implicit p: Parameters) extends RawModule with HasMemoryInterface {
+class SyncReadMemMem(
+    nReadPorts: Int,
+    nWritePorts: Int,
+    nReadWritePorts: Int,
+    nRows: Int,
+    dataWidth: Int,
+    latency: Int
+)(implicit p: Parameters)
+    extends RawModule
+    with HasMemoryInterface {
 
-  val mio = IO(new MemoryIOBundle(nReadPorts, nWritePorts, nReadWritePorts, log2Up(nRows), dataWidth, false))
+  val mio = IO(
+    new MemoryIOBundle(
+      nReadPorts,
+      nWritePorts,
+      nReadWritePorts,
+      log2Up(nRows),
+      dataWidth,
+      false
+    )
+  )
   withClockAndReset(mio.clock.asClock, false.B.asAsyncReset) {
-    val srmm = Module(new SRMMHelper(nReadPorts, nWritePorts, nReadWritePorts, nRows, dataWidth, latency))
+    val srmm = Module(
+      new SRMMHelper(
+        nReadPorts,
+        nWritePorts,
+        nReadWritePorts,
+        nRows,
+        dataWidth,
+        latency
+      )
+    )
     srmm.mio <> mio
   }
 

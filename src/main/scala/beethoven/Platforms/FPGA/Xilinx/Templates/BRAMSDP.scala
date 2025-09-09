@@ -9,12 +9,15 @@ import beethoven._
 import java.io.FileWriter
 
 //noinspection ScalaUnusedSymbol
-private[beethoven] class BRAMSDP(latency: Int,
-                                 dataWidth: Int,
-                                 nRows: Int,
-                                 withWE: Boolean,
-                                 debugName: String,
-                                )(implicit p: Parameters) extends BlackBox with HasMemoryInterface {
+private[beethoven] class BRAMSDP(
+    latency: Int,
+    dataWidth: Int,
+    nRows: Int,
+    withWE: Boolean,
+    debugName: String
+)(implicit p: Parameters)
+    extends BlackBox
+    with HasMemoryInterface {
   val weWidth = if (withWE) dataWidth / 8 else 1
   val adjustedDW = if (withWE) 8 else dataWidth
   val io = IO(new Bundle {
@@ -49,13 +52,19 @@ private[beethoven] class BRAMSDP(latency: Int,
   )
   private val addrWidth = log2Up(nRows)
 
-  val dname_prefix = beethoven.MemoryStreams.Memory.get_name(latency, dataWidth, nRows, 1, 1, 0)
+  val dname_prefix =
+    beethoven.MemoryStreams.Memory.get_name(latency, dataWidth, nRows, 1, 1, 0)
   val (memoryAnnotations, dname_suffix) = {
     if (
       p(ConstraintHintsKey).contains(BeethovenConstraintHint.MemoryConstrained)
     ) {
-      val info = BRAMTDP.getMemoryResources(nRows, dataWidth, debugName,
-        isSimple = true, canMux = withWE)
+      val info = BRAMTDP.getMemoryResources(
+        nRows,
+        dataWidth,
+        debugName,
+        isSimple = true,
+        canMux = withWE
+      )
       BRAMTDP.allocateBRAM(info.brams)
       BRAMTDP.allocateURAM(info.urams)
       (info.verilogAnnotations, info.fileNameAnnotation)
@@ -71,31 +80,35 @@ private[beethoven] class BRAMSDP(latency: Int,
 
   BeethovenBuild.addSource(component)
 
-  val mvR = if (latency > 1)
-    f"""for (i = 0; i < $latency-1; i = i+1) begin
+  val mvR =
+    if (latency > 1)
+      f"""for (i = 0; i < $latency-1; i = i+1) begin
        |    mem_pipe_reg[i+1] <= mem_pipe_reg[i];
        |  end
-       |""".stripMargin else ""
+       |""".stripMargin
+    else ""
 
   // We need keep hierarchy because in some rare circumstances, cross boundary optimization
   // prevents the memory from being inferred, and further, the memory is completely unrecongized,
   // mapped to a black box, and causes unrecoverable errors during logic synthesis... (Vivado 2022.1)
 
-  val read = if (!withWE)
-    "memreg <= mem[0][A_read];"
-  else
-    f"""  for(gi=0;gi<$weWidth;gi=gi+1) begin
+  val read =
+    if (!withWE)
+      "memreg <= mem[0][A_read];"
+    else
+      f"""  for(gi=0;gi<$weWidth;gi=gi+1) begin
        |    memreg[(gi+1)*8-1-:8] <= mem[gi][A_read];
        |  end
         """.stripMargin
 
-  val write = if (!withWE)
-    f"""    if (WEB) begin
+  val write =
+    if (!withWE)
+      f"""    if (WEB) begin
        |      mem[0][A_write] <= I;
        |    end
        |""".stripMargin
     else
-    f"""    for(gi=0;gi<${weWidth};gi=gi+1) begin
+      f"""    for(gi=0;gi<${weWidth};gi=gi+1) begin
        |      if (WEB[gi]) begin
        |        mem[gi][A_write] <= I[(gi+1)*8-1-:8];
        |      end

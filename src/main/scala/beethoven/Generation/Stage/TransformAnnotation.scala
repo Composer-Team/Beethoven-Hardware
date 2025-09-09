@@ -8,9 +8,12 @@ import freechips.rocketchip.stage.phases.Checks
 class TransformAnnotation extends Phase {
   override def invalidates(a: Phase): Boolean = false
   override val prerequisites = Seq(Dependency[Checks])
-  override val dependents = Seq(Dependency[chisel3.stage.phases.AddImplicitOutputFile])
+  override val dependents = Seq(
+    Dependency[chisel3.stage.phases.AddImplicitOutputFile]
+  )
 
   override def transform(annotations: AnnotationSeq): AnnotationSeq = {
+
     /** Construct output file annotation for emission */
     new ChiselOutputFileAnnotation("Beethoven") +: annotations
   }

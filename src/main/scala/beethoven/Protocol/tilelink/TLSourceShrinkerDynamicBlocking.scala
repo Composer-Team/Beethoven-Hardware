@@ -10,15 +10,18 @@ import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util._
 
-class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters) extends LazyModule {
+class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters)
+    extends LazyModule {
   require(maxNIDs > 0)
 
-  private def noShrinkRequired(client: TLClientPortParameters): Boolean = maxNIDs >= client.endSourceId
+  private def noShrinkRequired(client: TLClientPortParameters): Boolean =
+    maxNIDs >= client.endSourceId
 
   // The SourceShrinker completely destroys all FIFO property guarantees
   private val client = TLMasterParameters.v1(
     name = "TLSourceShrinker2",
-    sourceId = IdRange(0, maxNIDs))
+    sourceId = IdRange(0, maxNIDs)
+  )
   val node = new TLAdapterNode(
     clientFn = { cp =>
       if (noShrinkRequired(cp)) {
@@ -28,22 +31,32 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters) exte
 //        println(s"shrink pre: ${cp.allSupportPutFull} ${cp.allSupportGet}")
         // We erase all client information since we crush the source Ids
         val q = TLMasterPortParameters.v1(
-          clients = Seq(client.v1copy(
-            requestFifo = cp.clients.exists(_.requestFifo),
-            supportsGet = cp.allSupportGet,
-            supportsPutFull = cp.allSupportPutFull,
-            supportsProbe = cp.allSupportProbe)),
+          clients = Seq(
+            client.v1copy(
+              requestFifo = cp.clients.exists(_.requestFifo),
+              supportsGet = cp.allSupportGet,
+              supportsPutFull = cp.allSupportPutFull,
+              supportsProbe = cp.allSupportProbe
+            )
+          ),
           echoFields = cp.echoFields,
           requestFields = cp.requestFields,
-          responseKeys = cp.responseKeys)
+          responseKeys = cp.responseKeys
+        )
 //        println(s"shrink post: ${q.allSupportPutFull} ${q.allSupportGet}")
         q
-      }},
-    managerFn = { mp => mp.v1copy(managers =
-      mp.managers.map(m =>
-        m.v1copy(fifoId = if (maxNIDs == 1) Some(0) else m.fifoId)))
-    }) {
-    override def circuitIdentity = edges.in.map(_.client).forall(noShrinkRequired)
+      }
+    },
+    managerFn = { mp =>
+      mp.v1copy(managers =
+        mp.managers.map(m =>
+          m.v1copy(fifoId = if (maxNIDs == 1) Some(0) else m.fifoId)
+        )
+      )
+    }
+  ) {
+    override def circuitIdentity =
+      edges.in.map(_.client).forall(noShrinkRequired)
   }
 
   lazy val module = new Impl
@@ -51,7 +64,9 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters) exte
   class Impl extends LazyModuleImp(this) {
     node.in.zip(node.out).foreach { case ((in, edgeIn), (out, edgeOut)) =>
       // Acquires cannot pass this adapter; it makes Probes impossible
-      require(!edgeIn.client.anySupportProbe || !edgeOut.manager.anySupportAcquireB)
+      require(
+        !edgeIn.client.anySupportProbe || !edgeOut.manager.anySupportAcquireB
+      )
 
       out.b.ready := Bool(true)
       out.c.valid := Bool(false)
@@ -64,11 +79,20 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters) exte
         out.a <> in.a
         in.d <> out.d
       } else {
-        val sourceOut2InMap = Reg(Vec(maxNIDs, UInt(width = log2Up(edgeIn.client.endSourceId).W)))
+        val sourceOut2InMap =
+          Reg(Vec(maxNIDs, UInt(width = log2Up(edgeIn.client.endSourceId).W)))
 
         val allocated = RegInit(VecInit(Seq.fill(maxNIDs)(false.B)))
-        val beatsLeftPerAllocation = Reg(Vec(maxNIDs,
-          UInt(log2Up((edgeOut.manager.maxTransfer / edgeOut.manager.beatBytes) + 1).W)))
+        val beatsLeftPerAllocation = Reg(
+          Vec(
+            maxNIDs,
+            UInt(
+              log2Up(
+                (edgeOut.manager.maxTransfer / edgeOut.manager.beatBytes) + 1
+              ).W
+            )
+          )
+        )
         val d_last = beatsLeftPerAllocation(out.d.bits.source) === UInt(1)
         val nextFree = PriorityEncoder((~allocated)())
         val full = allocated.andR
@@ -83,12 +107,20 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters) exte
         val prevSourceMap = Reg(UInt(out.params.sourceBits.W))
         val prevSource = Reg(UInt(in.params.sourceBits.W))
         val singleBeatLgSz = log2Up(in.a.bits.data.getWidth / 8)
-        val isTxContinuation = handlingLongWriteTx && prevSource === in.a.bits.source
-        val longBeatCount = Reg(UInt(log2Up(platform.prefetchSourceMultiplicity).W))
+        val isTxContinuation =
+          handlingLongWriteTx && prevSource === in.a.bits.source
+        val longBeatCount =
+          Reg(UInt(log2Up(platform.prefetchSourceMultiplicity).W))
 
-        val canAcceptOnA = Mux(isTxContinuation, true.B, !full && ((a_in_valid && out.a.fire) || !a_in_valid))
+        val canAcceptOnA = Mux(
+          isTxContinuation,
+          true.B,
+          !full && ((a_in_valid && out.a.fire) || !a_in_valid)
+        )
         in.a.ready := canAcceptOnA
-        val longBeatExp = Reg(UInt(log2Up(Math.max(63, platform.prefetchSourceMultiplicity-1)).W))
+        val longBeatExp = Reg(
+          UInt(log2Up(Math.max(63, platform.prefetchSourceMultiplicity - 1)).W)
+        )
         when(in.a.fire) {
           a_in := in.a.bits
           a_in_valid := true.B
@@ -100,9 +132,13 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters) exte
               handlingLongWriteTx := false.B
             }
           }.otherwise {
-            when(in.a.bits.opcode === TLMessages.PutFullData && in.a.bits.size > singleBeatLgSz.U) {
+            when(
+              in.a.bits.opcode === TLMessages.PutFullData && in.a.bits.size > singleBeatLgSz.U
+            ) {
               handlingLongWriteTx := true.B
-              longBeatExp := (1.U << (in.a.bits.size-log2Up(in.a.bits.data.getWidth/8).U)).asUInt - 1.U
+              longBeatExp := (1.U << (in.a.bits.size - log2Up(
+                in.a.bits.data.getWidth / 8
+              ).U)).asUInt - 1.U
               longBeatCount := 1.U
             }.otherwise {
               handlingLongWriteTx := false.B
@@ -111,10 +147,15 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters) exte
             sourceOut2InMap(nextFree) := in.a.bits.source
             a_in.source := nextFree
             beatsLeftPerAllocation(nextFree) :=
-              Mux(in.a.bits.opcode === 0.U,
+              Mux(
+                in.a.bits.opcode === 0.U,
                 1.U, // if write then we only expect 1 write response
-                1.U << (in.a.bits.size - log2Up(edgeOut.manager.beatBytes).U)) // if read, then many responses
-            assert(in.a.bits.size >= log2Up(edgeOut.manager.beatBytes).U, "TLSourceShrinker2: Request too small")
+                1.U << (in.a.bits.size - log2Up(edgeOut.manager.beatBytes).U)
+              ) // if read, then many responses
+            assert(
+              in.a.bits.size >= log2Up(edgeOut.manager.beatBytes).U,
+              "TLSourceShrinker2: Request too small"
+            )
           }
         }
         when(out.a.fire) {
@@ -133,7 +174,9 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters) exte
           d_in := out.d.bits
           d_in_valid := true.B
           d_in.source := sourceOut2InMap(out.d.bits.source)
-          beatsLeftPerAllocation(out.d.bits.source) := beatsLeftPerAllocation(out.d.bits.source) - 1.U
+          beatsLeftPerAllocation(out.d.bits.source) := beatsLeftPerAllocation(
+            out.d.bits.source
+          ) - 1.U
           assert(beatsLeftPerAllocation(out.d.bits.source) =/= 0.U)
           when(d_last) {
             allocated(out.d.bits.source) := false.B
@@ -145,7 +188,9 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters) exte
 }
 
 object TLSourceShrinkerDynamicBlocking {
-  def apply(maxInFlight: Int, suggestedName: Option[String] = None)(implicit p: Parameters): TLNode = {
+  def apply(maxInFlight: Int, suggestedName: Option[String] = None)(implicit
+      p: Parameters
+  ): TLNode = {
     val shrinker = LazyModule(new TLSourceShrinkerDynamicBlocking(maxInFlight))
     shrinker.suggestName(suggestedName)
     shrinker.node

@@ -13,18 +13,23 @@ import beethoven.{BQuiet, BeethovenConstraintHint, ConstraintHintsKey}
 import java.io.FileWriter
 import scala.annotation.tailrec
 
-case class FPGAMemoryPrimitiveConsumer(brams: Int,
-                                       urams: Int,
-                                       mux_degree: Option[Int],
-                                       verilogAnnotations: String,
-                                       fileNameAnnotation: String)
+case class FPGAMemoryPrimitiveConsumer(
+    brams: Int,
+    urams: Int,
+    mux_degree: Option[Int],
+    verilogAnnotations: String,
+    fileNameAnnotation: String
+)
 
-private[beethoven] class BRAMTDP(latency: Int,
-                                 dataWidth: Int,
-                                 nRows: Int,
-                                 withWriteEnable: Boolean,
-                                 debugName: String,
-                               )(implicit p: Parameters) extends BlackBox with HasMemoryInterface {
+private[beethoven] class BRAMTDP(
+    latency: Int,
+    dataWidth: Int,
+    nRows: Int,
+    withWriteEnable: Boolean,
+    debugName: String
+)(implicit p: Parameters)
+    extends BlackBox
+    with HasMemoryInterface {
   val weWidth = if (withWriteEnable) dataWidth / 8 else 1
   val adjDataW = if (withWriteEnable) 8 else dataWidth
   val io = IO(new Bundle {
@@ -63,12 +68,19 @@ private[beethoven] class BRAMTDP(latency: Int,
   )
   private val addrWidth = log2Up(nRows)
 
-  val dname_prefix = beethoven.MemoryStreams.Memory.get_name(latency, dataWidth, nRows, 0, 0, 2)
+  val dname_prefix =
+    beethoven.MemoryStreams.Memory.get_name(latency, dataWidth, nRows, 0, 0, 2)
   val (memoryAnnotations, dname_suffix) = {
     if (
       p(ConstraintHintsKey).contains(BeethovenConstraintHint.MemoryConstrained)
     ) {
-      val info = BRAMTDP.getMemoryResources(nRows, dataWidth, debugName, isSimple = false, canMux = withWriteEnable)
+      val info = BRAMTDP.getMemoryResources(
+        nRows,
+        dataWidth,
+        debugName,
+        isSimple = false,
+        canMux = withWriteEnable
+      )
       BRAMTDP.allocateBRAM(info.brams)
       BRAMTDP.allocateURAM(info.urams)
       (info.verilogAnnotations, info.fileNameAnnotation)
@@ -85,7 +97,7 @@ private[beethoven] class BRAMTDP(latency: Int,
   BeethovenBuild.addSource(component)
 
   private val mvR = if (latency >= 3) {
-    f"""for (i = 0; i < ${latency-1}; i = i+1) begin
+    f"""for (i = 0; i < ${latency - 1}; i = i+1) begin
        |      mem_pipe_reg1[i+1] <= mem_pipe_reg1[i];
        |      mem_pipe_reg2[i+1] <= mem_pipe_reg2[i];
        |  end
@@ -105,7 +117,7 @@ private[beethoven] class BRAMTDP(latency: Int,
       f"memreg$i"
     else {
       if (latency > 2)
-        f"mem_pipe_reg$i[${latency-1}]"
+        f"mem_pipe_reg$i[${latency - 1}]"
       else
         f"mem_pipe_reg$i"
     }
@@ -113,7 +125,7 @@ private[beethoven] class BRAMTDP(latency: Int,
 
   def pipe(i: Int): String = {
     if (latency >= 2) {
-      val deep = if (latency > 2) f" [0:${latency-2}]" else ""
+      val deep = if (latency > 2) f" [0:${latency - 2}]" else ""
       f"reg [${dataWidth - 1}:0] mem_pipe_reg$i$deep;\n"
     } else ""
   }
@@ -177,7 +189,8 @@ object BRAMTDP {
   private val uram_dwidth = 72
   private val uram_nrows = 4 * 1024
 
-  private[beethoven] def bram_dwidth(isSimple: Boolean) = List(1, 2, 4, 9, 18, 36) ++ (if (isSimple) Seq(72) else Seq())
+  private[beethoven] def bram_dwidth(isSimple: Boolean) =
+    List(1, 2, 4, 9, 18, 36) ++ (if (isSimple) Seq(72) else Seq())
 
   def get_bram_width(requested: Int, isSimple: Boolean): Int = {
     @tailrec
@@ -191,11 +204,13 @@ object BRAMTDP {
   }
 
   // get bram and uram usage respectively for a given memory
-  def getMemoryResources(nRows: Int,
-                         dwidth: Int,
-                         debugName: String,
-                         isSimple: Boolean,
-                         canMux: Boolean)(implicit p: Parameters): FPGAMemoryPrimitiveConsumer = {
+  def getMemoryResources(
+      nRows: Int,
+      dwidth: Int,
+      debugName: String,
+      isSimple: Boolean,
+      canMux: Boolean
+  )(implicit p: Parameters): FPGAMemoryPrimitiveConsumer = {
     def get_n_brams(widthRequested: Int, rowsRequested: Int): Int = {
       val w = get_bram_width(widthRequested, isSimple)
       val rows_per_bram = bram_width2rows(isSimple)(w)
@@ -213,19 +228,20 @@ object BRAMTDP {
     }
 
     val isBigEnoughForURAM = nRows * dwidth >= 2 * 1024 * 64
-    val (useMux, canURAM, uRows, uWidth) = if (dwidth >= 64 || !(isBigEnoughForURAM && (dwidth % 8) == 0)) {
-      // For cases where we either fit naturally into URAM width or we're trivially unqualified, then just
-      // pass along the existing width/height
-      (None, dwidth >= 64 && isBigEnoughForURAM, nRows, dwidth)
-    } else {
-      // Otherwise, see if we can use byte-wise write enable to get away with a wider data bus
-      val mult = 1 << (Math.log10(72 / dwidth) / Math.log10(2)).floor.toInt
-      if (mult > 1) {
-        (Some(mult), true, (nRows.toFloat / mult).ceil.toInt, dwidth * mult)
+    val (useMux, canURAM, uRows, uWidth) =
+      if (dwidth >= 64 || !(isBigEnoughForURAM && (dwidth % 8) == 0)) {
+        // For cases where we either fit naturally into URAM width or we're trivially unqualified, then just
+        // pass along the existing width/height
+        (None, dwidth >= 64 && isBigEnoughForURAM, nRows, dwidth)
       } else {
-        (None, false, nRows, dwidth)
+        // Otherwise, see if we can use byte-wise write enable to get away with a wider data bus
+        val mult = 1 << (Math.log10(72 / dwidth) / Math.log10(2)).floor.toInt
+        if (mult > 1) {
+          (Some(mult), true, (nRows.toFloat / mult).ceil.toInt, dwidth * mult)
+        } else {
+          (None, false, nRows, dwidth)
+        }
       }
-    }
 
     // this warning is probably not useful anymore because of the above
 //    if (nRows >= 4 * 1024 && dwidth < 64) {
@@ -249,17 +265,40 @@ object BRAMTDP {
 
     val (have_enough_uram, have_enough_bram) = p(PlatformKey) match {
       case pxm: Platform with HasXilinxMem =>
-        (uram_used.getOrElse(currentContext, 0) + uram_consumption <= pxm.nURAMs(currentContext),
-          bram_used.getOrElse(currentContext, 0) + bram_consumption <= pxm.nBRAMs(currentContext))
+        (
+          uram_used.getOrElse(currentContext, 0) + uram_consumption <= pxm
+            .nURAMs(currentContext),
+          bram_used.getOrElse(currentContext, 0) + bram_consumption <= pxm
+            .nBRAMs(currentContext)
+        )
       case _ => (true, true)
     }
-    val usage = if (canURAM && have_enough_uram)
-      FPGAMemoryPrimitiveConsumer(0, uram_consumption, useMux, "(* ram_style = \"ultra\" *)", "_URAM")
-    else if (have_enough_bram)
-      FPGAMemoryPrimitiveConsumer(bram_consumption, 0, None, "(* ram_style = \"block\" *)", "_BRAM")
-    else if (have_enough_uram)
-      FPGAMemoryPrimitiveConsumer(0, uram_consumption, None, "(* ram_style = \"ultra\" *)", "_URAM")
-    else FPGAMemoryPrimitiveConsumer(0, 0, None, "", "")
+    val usage =
+      if (canURAM && have_enough_uram)
+        FPGAMemoryPrimitiveConsumer(
+          0,
+          uram_consumption,
+          useMux,
+          "(* ram_style = \"ultra\" *)",
+          "_URAM"
+        )
+      else if (have_enough_bram)
+        FPGAMemoryPrimitiveConsumer(
+          bram_consumption,
+          0,
+          None,
+          "(* ram_style = \"block\" *)",
+          "_BRAM"
+        )
+      else if (have_enough_uram)
+        FPGAMemoryPrimitiveConsumer(
+          0,
+          uram_consumption,
+          None,
+          "(* ram_style = \"ultra\" *)",
+          "_URAM"
+        )
+      else FPGAMemoryPrimitiveConsumer(0, 0, None, "", "")
 
     if (platform.isInstanceOf[HasXilinxMem]) {
       val pxm = p(PlatformKey).asInstanceOf[HasXilinxMem]
@@ -268,13 +307,20 @@ object BRAMTDP {
       //      }
 
       if (!p(BQuiet)) {
-        System.err.print(s"\rURAM (d$currentContext): ${uram_used.getOrElse(currentContext, 0)} / ${pxm.nURAMs(currentContext)}\t" +
-          f"BRAM (d$currentContext): ${bram_used.getOrElse(currentContext, 0)} / ${pxm.nBRAMs(currentContext)}")
+        System.err.print(
+          s"\rURAM (d$currentContext): ${uram_used
+              .getOrElse(currentContext, 0)} / ${pxm.nURAMs(currentContext)}\t" +
+            f"BRAM (d$currentContext): ${bram_used
+                .getOrElse(currentContext, 0)} / ${pxm.nBRAMs(currentContext)}"
+        )
         if (!have_enough_bram && !have_enough_uram) {
           System.err.println(
             s"Memory module $debugName requires $bram_consumption BRAMs and $uram_consumption URAMs,\n" +
-              s" but only ${pxm.nBRAMs(currentContext) - bram_used.getOrElse(currentContext, 0)} BRAMs and ${pxm.nURAMs(currentContext) - uram_used.getOrElse(currentContext, 0)} URAMs" +
-              s"are available.")
+              s" but only ${pxm.nBRAMs(currentContext) - bram_used
+                  .getOrElse(currentContext, 0)} BRAMs and ${pxm.nURAMs(currentContext) - uram_used
+                  .getOrElse(currentContext, 0)} URAMs" +
+              s"are available."
+          )
         }
       }
     }
@@ -293,19 +339,24 @@ object BRAMTDP {
       (4, 8 * 1024),
       (9, 4 * 1024),
       (18, 2 * 1024),
-      (36, 1024)) ++ (if (isSimple) Seq((72, 512)) else Seq())
+      (36, 1024)
+    ) ++ (if (isSimple) Seq((72, 512)) else Seq())
   })
 
   def allocateBRAM(nBRAM: Int): Unit = {
     val currentContext = DeviceContext.currentDevice.getOrElse(0)
-    bram_used = bram_used.updated(currentContext,
-      bram_used.getOrElse(currentContext, 0) + nBRAM)
+    bram_used = bram_used.updated(
+      currentContext,
+      bram_used.getOrElse(currentContext, 0) + nBRAM
+    )
   }
 
   def allocateURAM(nURAM: Int): Unit = {
     val currentContext = DeviceContext.currentDevice.getOrElse(0)
-    uram_used = uram_used.updated(currentContext,
-      uram_used.getOrElse(currentContext, 0) + nURAM)
+    uram_used = uram_used.updated(
+      currentContext,
+      uram_used.getOrElse(currentContext, 0) + nURAM
+    )
   }
 
 }

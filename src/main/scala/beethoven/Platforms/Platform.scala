@@ -23,25 +23,26 @@ abstract class Platform {
   val platformType: PlatformType
   val isActiveHighReset: Boolean
 
-  /**
-   * The front bus is the MMIO bus that the host uses to access accelerator cores. Most parameters are
-   * self-explanatory except for some platforms (usually heavily resource constrained ones), the host
-   * may access memory directly through Beethoven. This adds some latency but is not the primary concern
-   * on such systems.
-   */
+  /** The front bus is the MMIO bus that the host uses to access accelerator
+    * cores. Most parameters are self-explanatory except for some platforms
+    * (usually heavily resource constrained ones), the host may access memory
+    * directly through Beethoven. This adds some latency but is not the primary
+    * concern on such systems.
+    */
   val frontBusBaseAddress: Long
   val frontBusAddressNBits: Int
   val frontBusAddressMask: Long
   val frontBusBeatBytes: Int
   val frontBusProtocol: FrontBusProtocol
 
-  /**
-   * These parameters describe the main memory access channel. Of note, the physical address space can
-   * be smaller than the addressable space. This is the case, for instance, when certain parts of the
-   * address space correspond to peripherals and don't actually correspond to main memory. The
-   * `physicalMemoryBytes` parameter corresponds to the size of the physical memory space and
-   * `memorySpaceSizeBytes` corresponds to the size of the whole addressable space.
-   */
+  /** These parameters describe the main memory access channel. Of note, the
+    * physical address space can be smaller than the addressable space. This is
+    * the case, for instance, when certain parts of the address space correspond
+    * to peripherals and don't actually correspond to main memory. The
+    * `physicalMemoryBytes` parameter corresponds to the size of the physical
+    * memory space and `memorySpaceSizeBytes` corresponds to the size of the
+    * whole addressable space.
+    */
   // Is the memory access from the FPGA discrete from the host memory
   val hasDiscreteMemory: Boolean
   val physicalMemoryBytes: Long
@@ -51,11 +52,11 @@ abstract class Platform {
   val memoryControllerIDBits: Int
   val memoryControllerBeatBytes: Int
 
-  /**
-   * The rest of the parameters either correspond to parameters that are not typically used in generation
-   * or are only useful or relevant for extreme fine-tuning. Clock rate can be important for ASIC memory
-   * generation so we recommend setting a more precise value for ASIC platforms.
-   */
+  /** The rest of the parameters either correspond to parameters that are not
+    * typically used in generation or are only useful or relevant for extreme
+    * fine-tuning. Clock rate can be important for ASIC memory generation so we
+    * recommend setting a more precise value for ASIC platforms.
+    */
 
   val clockRateMHz: Int = 100
   // when making a memory access, we instrument the access in one of two ways: as a long-burst or as a short burst
@@ -80,9 +81,8 @@ abstract class Platform {
   val interCoreMemReductionLatency = 1
   val interCoreMemBusWidthBytes = 4
 
-  /**
-   * These default values should typically be fine.
-   */
+  /** These default values should typically be fine.
+    */
   val net_intraDeviceXbarLatencyPerLayer = 1
   val net_intraDeviceXbarTopLatency = 1
   val net_fpgaSLRBridgeLatency = 2
@@ -95,24 +95,36 @@ abstract class Platform {
       size = memorySpaceSizeBytes,
       beatBytes = memoryControllerBeatBytes,
       idBits = memoryControllerIDBits
-    ), nMemoryChannels = memoryNChannels
+    ),
+    nMemoryChannels = memoryNChannels
   )
 
   // multi-die stuff
 
-  def placementAffinity: Map[Int, Double] = Map.from(physicalDevices.map { dev => (dev.identifier, 1.0 / physicalDevices.length) })
+  def placementAffinity: Map[Int, Double] = Map.from(physicalDevices.map {
+    dev => (dev.identifier, 1.0 / physicalDevices.length)
+  })
 
   val physicalDevices: List[DeviceConfig] = List(DeviceConfig(0, ""))
-  val physicalInterfaces: List[PhysicalInterface] = List(PhysicalHostInterface(0), PhysicalMemoryInterface(0, 0))
+  val physicalInterfaces: List[PhysicalInterface] =
+    List(PhysicalHostInterface(0), PhysicalMemoryInterface(0, 0))
   val physicalConnectivity: List[(Int, Int)] = List()
 
   private[beethoven] def platformCheck(): Unit = {
-    assert(physicalInterfaces.exists(_.isInstanceOf[PhysicalHostInterface]),
-      "Platform must have at least one host interface")
-    assert(physicalInterfaces.exists(_.isInstanceOf[PhysicalMemoryInterface]),
-      "Platform must have at least one memory interface")
+    assert(
+      physicalInterfaces.exists(_.isInstanceOf[PhysicalHostInterface]),
+      "Platform must have at least one host interface"
+    )
+    assert(
+      physicalInterfaces.exists(_.isInstanceOf[PhysicalMemoryInterface]),
+      "Platform must have at least one memory interface"
+    )
     assert(physicalDevices.nonEmpty, "Platform must have at least one device")
-    assert(physicalInterfaces.count(_.isInstanceOf[PhysicalMemoryInterface]) == memoryNChannels)
+    assert(
+      physicalInterfaces.count(
+        _.isInstanceOf[PhysicalMemoryInterface]
+      ) == memoryNChannels
+    )
   }
 
   def getConnectivityFromDeviceID(id: Int): List[Int] = {
@@ -131,21 +143,27 @@ abstract class PhysicalInterface {
   val locationDeviceID: Int
 }
 
-case class PhysicalMemoryInterface(locationDeviceID: Int, channelIdx: Int) extends PhysicalInterface
+case class PhysicalMemoryInterface(locationDeviceID: Int, channelIdx: Int)
+    extends PhysicalInterface
 
-case class PhysicalHostInterface(locationDeviceID: Int) extends PhysicalInterface
+case class PhysicalHostInterface(locationDeviceID: Int)
+    extends PhysicalInterface
 
-case class DeviceRequirements(memory: Boolean,
-                              sw_commands: Boolean,
-                              hw_commands_src: Boolean,
-                              ocmemory_src: Boolean,
-                              ocmemory_sink: Boolean) {
+case class DeviceRequirements(
+    memory: Boolean,
+    sw_commands: Boolean,
+    hw_commands_src: Boolean,
+    ocmemory_src: Boolean,
+    ocmemory_sink: Boolean
+) {
   def ||(other: DeviceRequirements): DeviceRequirements = {
-    DeviceRequirements(memory || other.memory,
+    DeviceRequirements(
+      memory || other.memory,
       sw_commands || other.sw_commands,
       hw_commands_src || other.hw_commands_src,
       ocmemory_src || other.ocmemory_src,
-      ocmemory_sink || other.ocmemory_sink)
+      ocmemory_sink || other.ocmemory_sink
+    )
   }
 }
 
@@ -157,7 +175,6 @@ trait HasXilinxMem {
   val nURAMs: Map[Int, Int]
   val nBRAMs: Map[Int, Int]
 }
-
 
 trait PlatformHasSeparateDMA {
   val DMAIDBits: Int
