@@ -141,6 +141,7 @@ class BeethovenBuild(
           (pr(0), pr(1).toInt)
       }
     )
+
     os.remove.all(hw_build_dir)
     os.makeDir.all(hw_build_dir)
     val configWithBuildMode = {
@@ -154,6 +155,15 @@ class BeethovenBuild(
       }
     }
     beethoven.platform(configWithBuildMode).platformCheck()
+
+    // for carson to test
+    // config.configs.foreach {
+    //   a: AcceleratorSystemConfig =>
+    //     a.moduleConstructor.estimateFPGAResources(a.moduleConstructor match {
+    //       case ModuleBuilder(constructor) => 
+    //         () => constructor(configWithBuildMode)
+    //     })(configWithBuildMode)
+    // }
 
     new BeethovenChipStage().transform(
       AnnotationSeq(
