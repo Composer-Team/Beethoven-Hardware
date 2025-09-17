@@ -1,0 +1,40 @@
+
+module myVectorAdd (
+  input clock,
+  input reset,
+
+  input         cmd_0_valid,
+  output        cmd_0_ready,
+  input  [31:0] cmd_0_vec_a_addr,
+  input  [31:0] cmd_0_vec_b_addr,
+  input  [31:0] cmd_0_vec_out_addr,
+  input  [31:0] cmd_0_vector_length,
+  output        resp_0_valid,
+  input         resp_0_ready,
+  output        vec_a_req_valid,
+  input         vec_a_req_ready,
+  output [31:0] vec_a_req_len,
+  output [48:0] vec_a_req_addr_address,
+  output        vec_b_req_valid,
+  input         vec_b_req_ready,
+  output [31:0] vec_b_req_len,
+  output [48:0] vec_b_req_addr_address,
+  input         vec_a_inProgress,
+  input         vec_b_inProgress,
+  input         vec_a_data_valid,
+  output        vec_a_data_ready,
+  input  [31:0] vec_a_data,
+  input         vec_b_data_valid,
+  output        vec_b_data_ready,
+  input  [31:0] vec_b_data,
+  output        vec_out_req_valid,
+  input         vec_out_req_ready,
+  output [31:0] vec_out_req_len,
+  output [48:0] vec_out_req_addr_address,
+  input         write_isFlushed_0_0,
+  output        vec_out_data_valid,
+  input         vec_out_data_ready,
+  output [31:0] vec_out_data
+);
+
+endmodule

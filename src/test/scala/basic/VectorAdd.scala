@@ -158,6 +158,6 @@ class VecVerilogConfig
 object VecVerilogRunner
     extends BeethovenBuild(
       new VecVerilogConfig(),
-      platform = new AWSF2Platform,
-      buildMode = BuildMode.Simulation
+      platform = new KriaPlatform,
+      buildMode = BuildMode.Synthesis
     )

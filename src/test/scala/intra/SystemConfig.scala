@@ -54,7 +54,7 @@ class SystemConfig(numCores: Int,
 })
     
 object SystemConfig extends BeethovenBuild(new SystemConfig(6),
-  buildMode = BuildMode.Simulation,
+  buildMode = BuildMode.Synthesis,
   platform = new AWSF2Platform())
 
 object SystemConfig2 extends BeethovenBuild(new SystemConfig(1),

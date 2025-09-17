@@ -8,6 +8,14 @@ import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.rocket.PgLevels
 import freechips.rocketchip.subsystem._
 import freechips.rocketchip.tile._
+import beethoven.Platforms.FPGA.Xilinx.FPGAResources
+import firrtl.options.PhaseManager
+import firrtl.options.Dependency
+import chisel3.stage._
+import chisel3.stage.phases._
+import firrtl.stage._
+import firrtl._
+import firrtl._
 
 // Beethoven-system parameters
 case object AcceleratorSystems extends Field[List[AcceleratorSystemConfig]]
@@ -30,13 +38,56 @@ case object MaxInFlightMemTxsPerSource extends Field[Int]
 
 // this might need to be high to expand beyond one slr
 
-trait ModuleConstructor {}
-
 case class BeethovenIOInterface[T <: AccelCommand, R <: AccelResponse](
     coreCommand: T,
     coreResponse: R
 )
 
+trait ModuleConstructor {
+  private val synthesis_test_directory = os.pwd / ".test_synth"
+  // this is under construction by carson
+  def estimateFPGAResources(
+      constructor: () => chisel3.Module
+  )(implicit p: Parameters): FPGAResources = {
+    val phase = new PhaseManager(
+      Seq(
+        Dependency[chisel3.stage.phases.Checks],
+        Dependency[chisel3.stage.phases.Elaborate],
+        Dependency[chisel3.stage.phases.AddImplicitOutputFile],
+        Dependency[chisel3.stage.phases.AddImplicitOutputAnnotationFile],
+        Dependency[chisel3.stage.phases.MaybeAspectPhase],
+        Dependency[chisel3.stage.phases.Convert],
+        Dependency[firrtl.stage.phases.Compiler]
+      )
+    )
+
+    phase
+      .transform(
+        Seq(
+          ChiselGeneratorAnnotation(constructor),
+          RunFirrtlTransformAnnotation(new VerilogEmitter),
+          new TargetDirAnnotation(synthesis_test_directory.toString())
+        )
+      )
+      .collectFirst { case EmittedVerilogCircuitAnnotation(a) =>
+        a
+      }
+      .get
+      .value
+
+    ChiselStage.emitVerilog(constructor())
+    // generate a synthesis script for this particular module in `synthesis_test_directory`
+    // use vivado_2024 to synthesize for this board part: xck26-sfvc784-2LV-c
+    //    NOTE: SEE KRIA BUILD SCRIPTS in src/main/scala/beethoven/Platforms/FPGA/Xilinx/KriaPlatform.scala
+    //          and src/main/resources/beethoven/FPGA/KriaSetup.ssp and the synth.ssp in the same directory
+    // after synthesis, use report_utilization (I think there are options for easy-to-parse formats)
+    //
+
+    FPGAResources()
+  }
+}
+
+// for verilog
 case class BlackboxBuilderCustom(
     beethovenIOs: Seq[
       BeethovenIOInterface[_ <: AccelCommand, _ <: AccelResponse]

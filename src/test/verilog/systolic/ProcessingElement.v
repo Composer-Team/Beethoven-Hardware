@@ -25,7 +25,7 @@ wire        wgt_s = wgt[15];
 wire        act_s = act[15];
 
 // take the product of the fractional parts
-wire [29:0] product = wgt_f * act_f ;
+wire [29:0] product = wgt_f * act_f;
 // extract the lower 7b integer bits and the upper 8b of fraction
 wire [14:0] product_f = product[23:8];
 // get the new sign bit
@@ -48,6 +48,7 @@ wire        n_acc_s = accumulator_s ^ oflow;
 // if there is an underflow, then it flips to the 2s-complement negative - flip it back to positive
 wire [14:0] n_acc_f = (addition ^ {16{oflow}}) + oflow;
 wire [15:0] updated_accumulator = {n_acc_s, n_acc_f};
+
 
 always @(posedge clk) begin
   if (rst_output) begin

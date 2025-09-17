@@ -17,6 +17,7 @@ object AnnotateXilinxInterface {
       case XilinxInterface.AHB  => "xilinx.com:interface:ahblite_rtl:1.0"
     }
     val busName = prefix.toUpperCase()
+    // wtf?
     val sedCmds = Seq("input", "output").map { d: String =>
       s"s/( *)$d (.*) ${prefix}_([^,]*)(,)?/\\1\\(\\* X_INTERFACE_INFO = \"$interfaceName $busName \\3\" \\*\\)\\n" +
         s"\\1$d \\2 ${prefix}_\\3\\4/"

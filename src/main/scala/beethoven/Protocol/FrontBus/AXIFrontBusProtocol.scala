@@ -141,7 +141,6 @@ class AXIFrontBusProtocol(withDMA: Boolean, nClocks: Int = 1)
           fronthub.axi_in := axi_master
           fronthub
         }
-
       val (dma_node, dma_front) = if (withDMA) {
         val node = AXI4MasterNode(
           Seq(
