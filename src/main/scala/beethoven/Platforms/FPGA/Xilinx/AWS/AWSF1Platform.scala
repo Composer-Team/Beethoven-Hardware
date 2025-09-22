@@ -1,11 +1,12 @@
 package beethoven.Platforms.FPGA.Xilinx.AWS
 
-import beethoven.Platforms.FPGA.Xilinx.Templates.SynthScript
+import beethoven.Platforms.FPGA.Xilinx.SynthScript
 import beethoven.Platforms.FPGA.Xilinx.getTclMacros
 import beethoven.Platforms._
 import beethoven.{BeethovenBuild, BuildMode, U200Platform}
 import chipsalliance.rocketchip.config._
 import os.Path
+import beethoven.common.tclMacro
 
 object AWSF1Platform {
   def check_if_setup(ip: String): Boolean = {
@@ -86,20 +87,19 @@ class AWSF1Platform(memoryNChannels: Int, val clock_recipe: String = "A0")
 
       // write ip tcl
       val ip_tcl = BeethovenBuild.top_build_dir / "aws" / "ip.tcl"
+      val ip_cmds = BeethovenBuild.postProcessorBundles
+        .filter(_.isInstanceOf[tclMacro])
+        .map(_.asInstanceOf[tclMacro].cmd)
+        .mkString("\n")
       os.write.over(
         ip_tcl,
-        """
+        s"""
           |set ipDir ips
-          |exec rm -rf $ipDir/*
-          |exec mkdir -p $ipDir
-          |""".stripMargin + SynthScript(
-          "",
-          "",
-          "",
-          "",
-          clockRateMHz.toString,
-          precompile_dependencies = getTclMacros()
-        ).ip_script + "\nupdate_compile_order -fileset sources_1\n"
+          |exec rm -rf $$ipDir/*
+          |exec mkdir -p $$ipDir
+          |${ip_cmds}
+          |update_compile_order -fileset sources_1
+          |""".stripMargin
       )
 
       // get aws address from stdio input

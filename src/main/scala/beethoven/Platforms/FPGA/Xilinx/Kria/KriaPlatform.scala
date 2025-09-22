@@ -2,7 +2,7 @@ package beethoven
 
 import chipsalliance.rocketchip.config.{Config, Parameters}
 import beethoven.Generation._
-import beethoven.Platforms.FPGA.Xilinx.Templates.SynthScript
+import beethoven.Platforms.FPGA.Xilinx.SynthScript
 import beethoven.Platforms.FPGA.Xilinx.getTclMacros
 import beethoven.Platforms.PlatformType.PlatformType
 import beethoven.Platforms._
@@ -48,23 +48,11 @@ case class KriaPlatform(
     if (p(BuildModeKey) == BuildMode.Synthesis) {
       val s = SynthScript(
         "beethoven",
-        "output",
-        "xck26-sfvc784-2LV-c",
-        "xilinx.com:kv260_som:part0:1.4",
-        clockRateMHz.toString,
-        precompile_dependencies = getTclMacros()
-      )
-      os.write.over(
-        BeethovenBuild.top_build_dir / "synth.tcl",
-        s.setup + "\n" + s.run
-      )
-      os.write.over(
-        BeethovenBuild.top_build_dir / "ip.tcl",
-        BeethovenBuild.postProcessorBundles
-          .filter(_.isInstanceOf[tclMacro])
-          .map(_.asInstanceOf[tclMacro].cmd)
-          .mkString("\n")
-      )
+        "xilinx_work",
+        part_name = "xck26-sfvc784-2LV-c",
+        board_part = "xilinx.com:kv260_som:part0:1.4"
+      )(p)
+      s.write_to_dir(BeethovenBuild.top_build_dir / "implementation")
     }
   }
 

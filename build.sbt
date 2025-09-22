@@ -24,12 +24,11 @@ ThisBuild / scalaVersion := "2.13.10"
 
 lazy val beethoven =(project in file(".")).settings(
   name := "beethoven-hardware",
-  version := "0.0.46",
+  version := "0.0.49",
   organization := "edu.duke.cs.apex",
   libraryDependencies ++= Seq(
     "edu.berkeley.cs" %% "chisel3" % chiselVersion,
     "edu.duke.cs.apex" %% "rocketchip-rocketchip-fork" % "0.1.12",
-    "org.scalatra.scalate" %% "scalate-core" % "1.9.6",
     "edu.berkeley.cs" %% "chiseltest" % "0.5.2"
   ),
   resolvers += ("reposilite-repository-releases" at "http://54.165.244.214:8080/releases").withAllowInsecureProtocol(true),
