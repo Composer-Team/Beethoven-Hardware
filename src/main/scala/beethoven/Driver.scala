@@ -259,9 +259,10 @@ class BeethovenBuild(
         )})\n"""
     )
 //    println("wrote to " + gsrc_dir / "vcs_srcs.in")
+    val allSrcs = chiselGeneratedSrcs.filter(!os.isDir(_)).toList ++ movedSrcs.filter(a => !os.isDir(a)).toList
     os.write.over(
       top_build_dir / "vcs_srcs.in",
-      chiselGeneratedSrcs.mkString("\n") + "\n" + movedSrcs.mkString("\n")
+      allSrcs.mkString("\n")
     )
     if (buildMode == BuildMode.Simulation)
       vcs.HarnessGenerator.generateHarness()(configWithBuildMode)
