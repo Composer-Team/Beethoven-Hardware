@@ -10,7 +10,7 @@ import beethoven.Protocol.FrontBus.{AXIFrontBusProtocol, FrontBusProtocol}
 import os.Path
 import beethoven.common.tclMacro
 
-case class AUPZU3RAM8Platform(
+case class AUPZU3Platform(
     val DRAMSizeGB: Int = 8, // 4 or 8 for AUP-ZU3 board
     memoryNChannels: Int = 1,
     override val clockRateMHz: Int = 100,
