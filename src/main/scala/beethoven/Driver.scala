@@ -98,6 +98,7 @@ object BeethovenBuild {
     beethovenRoot() + "/build/"
   val top_build_dir = Path(BeethovenBuild.beethovenGenDir)
   val hw_build_dir = top_build_dir / "hw"
+  val board_files_dir = Path(beethovenRoot() + "/board_files/")
 
   var symbolicMemoryResources: Seq[Path] = Seq.empty
   var sourceList: Seq[Path] = Seq.empty
@@ -144,6 +145,7 @@ class BeethovenBuild(
 
     os.remove.all(hw_build_dir)
     os.makeDir.all(hw_build_dir)
+    os.makeDir.all(board_files_dir)
     val configWithBuildMode = {
       val w = new WithBeethoven(platform = platform).alterPartial {
         case BuildModeKey       => buildMode

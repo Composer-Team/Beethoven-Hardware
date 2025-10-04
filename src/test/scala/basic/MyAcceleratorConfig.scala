@@ -4,6 +4,7 @@ import beethoven.{AcceleratorConfig, AcceleratorSystemConfig, ReadChannelConfig,
 import beethoven.Platforms.FPGA.Xilinx.AWS.{AWSF2Platform, DMAHelperConfig, MemsetHelper, MemsetHelperConfig}
 import beethoven._
 import chisel3._
+import beethoven.Platforms.FPGA.Xilinx.Zynq.Kria2Platform
 
 class MyAcceleratorConfig extends AcceleratorConfig(
   List.tabulate(4){ k =>

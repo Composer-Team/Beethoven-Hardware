@@ -38,8 +38,8 @@ object SynthScript {
       project_name: String,
       output_dir: String,
       precompile_dependencies: Seq[String] = Seq(),
-      part_name: String, // this is kria
-      board_part: String, // also kria
+      part_name: String,
+      board_part: String,
       top_module: String = "BeethovenTop",
       ip_inline: Boolean = true
   )(implicit p: Parameters): SynthSet = {
@@ -63,7 +63,9 @@ create_project ${project_name} ${output_dir} -part ${part_name} -force
 exec rm -rf ips
 exec mkdir -p ips
 ${if (ip_inline) ip_str else ""}
-set_property board_part ${board_part} [current_project]
+puts "Adding board files from ${BeethovenBuild.board_files_dir.toString}"
+set_param board.repoPaths {${BeethovenBuild.board_files_dir.toString}}
+${if (board_part.strip()!="") f"set_property board_part ${board_part} [current_project]" else ""}
 
 create_bd_design "design_1"
 
