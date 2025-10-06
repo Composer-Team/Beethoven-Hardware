@@ -9,7 +9,7 @@ class MyAcceleratorConfig extends AcceleratorConfig(
   List.tabulate(4){ k =>
   AcceleratorSystemConfig(
     nCores = 1,
-    name = "MyAcceleratorSystem",
+    name = f"MyAcceleratorSystem${k}",
     moduleConstructor = ModuleBuilder(p => new MyAccelerator(1 << k)(p)),
     memoryChannelConfig = List(
       ReadChannelConfig("vec_in", dataBytes = 1<<k),
