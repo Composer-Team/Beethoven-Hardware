@@ -73,9 +73,10 @@ create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e soc
 endgroup
 apply_bd_automation -rule xilinx.com:bd_rule:zynq_ultra_ps_e -config {apply_board_preset "1" } [get_bd_cells soc]
 set_property -dict [list \\
+    CONFIG.PSU__MAXIGP0__DATA_WIDTH {32} \\
+    CONFIG.PSU__SAXIGP2__DATA_WIDTH {128} \\
     CONFIG.PSU__USE__M_AXI_GP1 {0} \\
     CONFIG.PSU__USE__S_AXI_GP2 {1} \\
-    CONFIG.PSU__SAXIGP2__DATA_WIDTH {32} \\
     CONFIG.PSU__FPGA_PL0_ENABLE {1} \\
     CONFIG.PSU__CRL_APB__PL0_REF_CTRL__FREQMHZ {${platform.clockRateMHz.toString}} \\
 ] [get_bd_cells soc]
