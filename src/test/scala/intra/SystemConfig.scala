@@ -5,7 +5,7 @@ import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2Platform
 import beethoven.Platforms.FPGA.Xilinx.AWS.DMAHelperConfig
 import beethoven.Platforms.FPGA.Xilinx.AWS.MemsetHelperConfig
 import intra.DispatcherCore
-import beethoven.Platforms.FPGA.Xilinx.Zynq.KriaPlatform
+import beethoven.KriaPlatform
 
 class SystemConfig(numCores: Int,
                         ) extends AcceleratorConfig({

@@ -16,7 +16,7 @@ import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF1Platform
 import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2XDMAWorkarounds
 import beethoven.Platforms.FPGA.Xilinx.AWS.DMAHelperConfig
 import beethoven.Platforms.FPGA.Xilinx.AWS.MemsetHelperConfig
-import beethoven.Platforms.FPGA.Xilinx.Zynq.KriaPlatform
+import beethoven.KriaPlatform
 
 class VectorAdd extends Module {
   val io = IO(new Bundle {
