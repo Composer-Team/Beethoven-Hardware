@@ -42,7 +42,7 @@ class MyAccelerator(dWidthBytes: Int)(implicit p: Parameters)
   )
 
   io.req.ready := vec_in_request.ready && vec_out_request.ready && !activeCmd
-  io.resp.valid := vec_in_request.ready && vec_out_request.ready && activeCmd
+  io.resp.valid := vec_in_request.ready && vec_out_request.ready && vec_out_data.isFlushed && activeCmd
   when(io.resp.fire) {
     activeCmd := false.B
   }
