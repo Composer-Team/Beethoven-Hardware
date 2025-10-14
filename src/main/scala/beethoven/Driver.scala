@@ -23,7 +23,6 @@ import chisel3.stage.phases.Elaborate
 import chisel3.stage.phases.Convert
 import firrtl.AnnotationSeq
 import circt.stage.SplitVerilog
-import chisel3.emitVerilog
 
 class BeethovenChipStage extends ChiselStage {
   // override val shell = new Shell("beethoven-compile")
