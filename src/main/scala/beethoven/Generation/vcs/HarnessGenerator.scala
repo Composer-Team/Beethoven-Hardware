@@ -7,6 +7,35 @@ import org.chipsalliance.cde.config.Parameters
   */
 
 object HarnessGenerator {
+  private def scrape_inputs(
+      strs: Seq[String],
+      ins: Seq[String] = Seq(),
+      outs: Seq[String] = Seq(),
+      previous_line_prefix: String = ""
+  ): (Seq[String], Seq[String]) = {
+    val tl = strs.tail
+    if (strs.head.contains(");")) (ins, outs)
+    else if (strs.head.contains("module ") || strs.head.contains("(*"))
+      scrape_inputs(tl, ins, outs, previous_line_prefix)
+    else {
+      val hd = strs.head
+      val str = if (hd.contains("//")) hd.substring(0, hd.indexOf("//")).trim() else hd.trim()
+      if (str == "") scrape_inputs(tl, ins, outs, previous_line_prefix)
+      else if (str.contains("input "))
+        scrape_inputs(tl, ins.appended(str), outs, str.split(" +").dropRight(1).mkString(" ") + " ")
+      else if (str.contains("output "))
+        scrape_inputs(tl, ins, outs.appended(str), str.split(" +").dropRight(1).mkString(" ") + " ")
+      else
+        previous_line_prefix.split(" ")(0) match {
+          case "input" =>
+            scrape_inputs(tl, ins.appended(previous_line_prefix + str), outs, previous_line_prefix)
+          case "output" =>
+            scrape_inputs(tl, ins, outs.appended(previous_line_prefix + str), previous_line_prefix)
+          case _ => throw new Exception("Harness Generator error:" + hd)
+        }
+    }
+  }
+
   def generateHarness()(implicit p: Parameters): Unit = {
     val r = os.read(BeethovenBuild.hw_build_dir / "BeethovenTop.sv").split("\n")
 
@@ -24,10 +53,10 @@ object HarnessGenerator {
       r == "clock" || r == "reset" || r == "RESETn"
     }
 
-    val inputs =
-      r.filter(_.contains("input ")).map(sanitize).filter(!is_reserved(_))
-    val outputs =
-      r.filter(_.contains("output ")).map(sanitize).filter(!is_reserved(_))
+    val (unsanitized_input, unsanitized_output) = scrape_inputs(r)
+
+    val inputs = unsanitized_input.map(sanitize).filter(!is_reserved(_))
+    val outputs = unsanitized_output.map(sanitize).filter(!is_reserved(_))
 
     val is_reset_active_high = platform.isActiveHighReset
     val reset_active = if (is_reset_active_high) 1 else 0

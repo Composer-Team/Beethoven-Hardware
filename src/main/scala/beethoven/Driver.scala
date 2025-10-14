@@ -186,7 +186,10 @@ class BeethovenBuild(
     )
 
     os.remove.all(hw_build_dir / "firrtl_black_box_resource_files.f")
-    val allChiselGeneratedSrcs = WalkPath(hw_build_dir)
+    val allChiselGeneratedSrcs = WalkPath(hw_build_dir).filter{p =>
+      val rel = p.relativeTo(hw_build_dir).toString()
+      !rel.contains("verification/") && os.isFile(p)}
+
     val chiselGeneratedSrcs = allChiselGeneratedSrcs
       .filter(a => !a.toString().contains("ShiftReg") && !a.toString().contains("Queue"))
       .filter(a => !a.toString().contains("txt"))
