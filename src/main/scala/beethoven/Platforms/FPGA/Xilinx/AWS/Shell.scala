@@ -22,10 +22,12 @@ object Shell {
     val l_w_sigs = Seq("data", "strb", "valid", "ready")
     val l_r_sigs = Seq("resp", "valid", "data", "ready")
     val l_b_sigs = Seq("resp", "valid", "ready")
-    val l_ar_ar_ignore = aw_ar_ignore ++ Seq("id", "len", "size", "burst")
+    // note to maintainer, these do not need to "ignore" ID bits because they're
+    // not generated when we specify 1 possible ID
+    val l_ar_ar_ignore = aw_ar_ignore ++ Seq("len", "size", "burst")
     val l_w_ignore = Seq("last")
-    val l_r_ignore = Seq("last", "id")
-    val l_b_ignore = Seq("id")
+    val l_r_ignore = Seq("last")
+    val l_b_ignore = Seq()
 
     val ddr_connects = {
       val aw_connect =
@@ -43,42 +45,44 @@ object Shell {
     }
 
     val dma_connects = {
-      val (sig_set, prefix) = withDMA match {
+      val (sawar, sw, sr, sb, sig, prefix) = withDMA match {
         case DMAType.ViaDMA =>
           (
-            (aw_ar_ignore, w_sigs, r_sigs, b_sigs, Seq(("aw", aw_ar_ignore), ("ar", aw_ar_ignore))),
+            aw_ar_ignore,
+            w_sigs,
+            r_sigs,
+            b_sigs,
+            Seq(("aw", aw_ar_ignore), ("ar", aw_ar_ignore)),
             "sh_cl_dma_pcis_"
           )
+
         case DMAType.ViaSDA =>
           (
-            (
-              l_aw_ar_sigs,
-              l_w_sigs,
-              l_r_sigs,
-              l_b_sigs,
-              Seq(
-                ("ar", l_ar_ar_ignore),
-                ("aw", l_ar_ar_ignore),
-                ("w", l_w_ignore),
-                ("r", l_r_ignore),
-                ("b", l_b_ignore)
-              )
+            l_aw_ar_sigs,
+            l_w_sigs,
+            l_r_sigs,
+            l_b_sigs,
+            Seq(
+              ("ar", l_ar_ar_ignore),
+              ("aw", l_ar_ar_ignore),
+              ("w", l_w_ignore),
+              ("r", l_r_ignore),
+              ("b", l_b_ignore)
             ),
             "sda_dma_bus."
           )
       }
 
-      val aw_connect = aw_ar_sigs.map(sig => f".dma_aw$sig(${prefix}aw$sig)")
-      val ar_connect = aw_ar_sigs.map(sig => f".dma_ar$sig(${prefix}ar$sig)")
-      val w_connect = w_sigs.map(sig => f".dma_w$sig(${prefix}w$sig)")
-      val r_connect = r_sigs.map(sig => f".dma_r$sig(${prefix}r$sig)")
-      val b_connect = b_sigs.map(sig => f".dma_b$sig(${prefix}b$sig)")
-      val ignores = sig_set._5.flatMap { case (pref, sigs) =>
+      val aw_connect = sawar.map(sig => f".dma_aw$sig(${prefix}aw$sig)")
+      val ar_connect = sawar.map(sig => f".dma_ar$sig(${prefix}ar$sig)")
+      val w_connect = sw.map(sig => f".dma_w$sig(${prefix}w$sig)")
+      val r_connect = sr.map(sig => f".dma_r$sig(${prefix}r$sig)")
+      val b_connect = sb.map(sig => f".dma_b$sig(${prefix}b$sig)")
+      val ignores = sig.flatMap { case (pref, sigs) =>
         sigs.map(s => f".dma_$pref$s()")
       }
-      val w_ignore =
-        (aw_connect ++ ar_connect ++ w_connect ++ r_connect ++ b_connect ++ ignores)
-          .mkString(",\n    ")
+      (aw_connect ++ ar_connect ++ w_connect ++ r_connect ++ b_connect ++ ignores)
+        .mkString(",\n    ")
     }
 
     val aw_ar_lsigs = Seq("addr", "valid", "ready")

@@ -79,10 +79,12 @@ object Generation {
            |static const uint64_t addrMask = 0x${addrSet.mask.toLong.toHexString};
            |""".stripMargin,
         if (
-          platform.isInstanceOf[PlatformHasDMA] && p(
-            BuildModeKey
-          ) != Simulation
-        ) "#define BEETHOVEN_HAS_DMA"
+          platform.isInstanceOf[PlatformHasDMA] &&
+          p(BuildModeKey) != Simulation
+        ) "#define " + (platform.asInstanceOf[PlatformHasDMA].DMAisLite match {
+          case true  => "BEETHOVEN_HAS_DMA_LITE"
+          case false => "BEETHOVEN_HAS_DMA_AXI4"
+        })
         else "", {
           if (platform.memoryNChannels > 0) {
             val idDtype = getVerilatorDtype(platform.extMem.master.idBits)

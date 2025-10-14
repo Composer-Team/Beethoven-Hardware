@@ -5,10 +5,10 @@ import beethoven.Platforms.FPGA.Xilinx.AWS.{AWSF2Platform, DMAHelperConfig, Mems
 import beethoven._
 import chisel3._
 
-class MyAcceleratorConfig extends AcceleratorConfig(
+class MyAcceleratorConfig(nCores: Int = 1) extends AcceleratorConfig(
   List.tabulate(4){ k =>
   AcceleratorSystemConfig(
-    nCores = 1,
+    nCores = nCores,
     name = f"MyAcceleratorSystem${k}",
     moduleConstructor = ModuleBuilder(p => new MyAccelerator(1 << k)(p)),
     memoryChannelConfig = List(
@@ -18,13 +18,13 @@ class MyAcceleratorConfig extends AcceleratorConfig(
   )
 
 object MyAcceleratorKria extends BeethovenBuild(new MyAcceleratorConfig,
-  buildMode = BuildMode.Simulation, 
-  platform = new AWSF2Platform())
+  buildMode = BuildMode.Synthesis, 
+  platform = new KriaPlatform())
 
 object MyAcceleratorKriaClocks extends BeethovenBuild(new MyAcceleratorConfig,
   buildMode = BuildMode.Synthesis,
   platform = new Kria2Platform())
 
-object MyAcceleratorF2 extends BeethovenBuild(new MyAcceleratorConfig,
+object MyAcceleratorF2 extends BeethovenBuild(new MyAcceleratorConfig(5),
   buildMode = BuildMode.Synthesis,
   platform = new AWSF2Platform())

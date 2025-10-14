@@ -81,7 +81,7 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
       )(c)
 
       os.copy.over(BeethovenBuild.hw_build_dir, gen_dir)
-      os.move(gen_dir / "BeethovenTop.v", top_file)
+      os.move(gen_dir / "BeethovenTop.sv", top_file)
       os.walk(BeethovenBuild.top_build_dir, followLinks = false, maxDepth = 1)
         .foreach(p =>
           if (

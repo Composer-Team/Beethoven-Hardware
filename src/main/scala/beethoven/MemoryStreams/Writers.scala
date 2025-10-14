@@ -303,7 +303,7 @@ class SequentialWriter(
       )
       beatBuffer(beatCounter) := Cat(bytesGrouped.reverse)
       beatCounter := beatCounter + 1.U
-      maskAcc(beatCounter) := true.B
+      maskAcc(if (fabricBeatBytes == userBytes) 0.U else beatCounter) := true.B
       when(beatCounter === (beatLim - 1).U || expectedNumBeats === 1.U) {
         enable_buffer_write := true.B
         val bgc = Cat(bytesGrouped.reverse)
