@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import beethoven._
 import beethoven.common._
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 
 class VecAddCoreCommand()(implicit p: Parameters) extends AccelCommand("vector_add") {
   val vec_a_addr = Address()
@@ -16,7 +16,7 @@ class VecAddCoreCommand()(implicit p: Parameters) extends AccelCommand("vector_a
 //noinspection TypeAnnotation,ScalaWeakerAccess
 class VectorAddCore()(implicit p: Parameters) extends AcceleratorCore {
   val my_io = BeethovenIO(new VecAddCoreCommand(), new EmptyAccelResponse())
-  println(s"core id: $my_io.req.bits.getCoreID")
+  // println(s"core id: $my_io.req.bits.getCoreID")
 
   val vec_a_reader = getReaderModule("vec_a")
   val vec_b_reader = getReaderModule("vec_b")

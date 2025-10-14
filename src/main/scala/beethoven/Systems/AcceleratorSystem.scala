@@ -2,7 +2,7 @@ package beethoven.Systems
 
 import beethoven._
 import beethoven.Floorplanning.LazyModuleWithSLRs.LazyModuleWithFloorplan
-import chipsalliance.rocketchip.config._
+import org.chipsalliance.cde.config._
 import beethoven.MemoryStreams._
 import beethoven.Protocol.RoCC._
 import beethoven.Protocol.tilelink.TLSlave.{
@@ -14,8 +14,8 @@ import beethoven.Protocol.tilelink.TLSlave.{
   TLToTLSlave
 }
 import beethoven.Protocol.tilelink.TLSupportChecker
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.tilelink._
+import org.chipsalliance.diplomacy._
+import org.chipsalliance.diplomacy.tilelink._
 
 class AcceleratorSystem(val nCores: Int, core_offset: Int)(implicit
     p: Parameters,

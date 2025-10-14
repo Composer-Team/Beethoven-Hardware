@@ -2,12 +2,12 @@ package beethoven.Protocol.AXI
 
 import beethoven.MemoryStreams.Memory
 import beethoven.common.{CLog2Up, ShiftReg}
-import chipsalliance.rocketchip.config.Parameters
-import freechips.rocketchip.amba.axi4.AXI4ToTLNode
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
+import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy.amba.axi4.AXI4ToTLNode
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.tilelink.TLMessages
+import org.chipsalliance.diplomacy.tilelink.TLMessages
+import org.chipsalliance.diplomacy._
 
 import scala.annotation.tailrec
 

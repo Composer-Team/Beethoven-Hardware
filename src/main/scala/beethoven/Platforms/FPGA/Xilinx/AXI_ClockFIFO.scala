@@ -4,11 +4,11 @@ import beethoven.Platforms.FPGA.Xilinx.AXI_ClockFIFO.existing
 import beethoven.BeethovenBuild
 import beethoven.Protocol.AXI.AXI4Compat
 import chisel3._
-import freechips.rocketchip.subsystem.MasterPortParams
 import os.Path
 
 import scala.collection.mutable
 import beethoven.common.tclMacro
+import beethoven.Protocol.MasterPortParams
 
 object AXI_ClockFIFO {
   private val existing = mutable.Set[(Int, Int, Int)]()

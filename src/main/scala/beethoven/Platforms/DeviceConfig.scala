@@ -1,7 +1,7 @@
 package beethoven.Platforms
 
 import beethoven.platform
-import chipsalliance.rocketchip.config._
+import org.chipsalliance.cde.config._
 
 case class DeviceConfig(identifier: Int, name: String)
 // implementation specifics

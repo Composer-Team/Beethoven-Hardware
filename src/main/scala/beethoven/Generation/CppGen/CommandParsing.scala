@@ -1,7 +1,7 @@
 package beethoven.Generation.CPP
 
 import beethoven._
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import beethoven.common._
 import chisel3._
 import beethoven.Generation.CPP.TypeParsing.getCType

@@ -1,21 +1,15 @@
 package beethoven.Protocol.tilelink.TLSlave
 
 import beethoven.Floorplanning.LazyModuleWithSLRs.LazyModuleWithFloorplan
-import chipsalliance.rocketchip.config.Parameters
-import freechips.rocketchip.diplomacy.{
-  AddressSet,
-  LazyModule,
-  LazyModuleImp,
-  MixedAdapterNode,
-  NexusNode,
-  ValName
-}
-import freechips.rocketchip.tilelink.{
+import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy._
+import org.chipsalliance.diplomacy.nodes._
+import org.chipsalliance.diplomacy.tilelink.{
   TLImp,
   TLMasterPortParameters,
   TLSlavePortParameters
 }
-import freechips.rocketchip.util.BundleField
+import org.chipsalliance.diplomacy.util.BundleField
 import chisel3._
 
 class TLSlaveXbar()(implicit p: Parameters) extends LazyModule {

@@ -1,8 +1,7 @@
 package beethoven.Systems
 
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
-import chisel3.experimental.{FixedPoint, Interval}
 import chisel3.util._
 import beethoven.Generation.CppGeneration
 import beethoven.Protocol.RoCC.RoccExchange
@@ -31,9 +30,8 @@ class BeethovenCommandBundler[T1 <: AccelCommand, T2 <: AccelResponse](
       bundleIn.cloneType,
       bundleOut.cloneType,
       !bundleOut.isInstanceOf[InvalidAccelResponse]
-    )
+    ).cloneType
   )
-  val io_am_active = IO(Bool())
 
   if (expectResponse) {
     val am_active = RegInit(false.B)
@@ -43,9 +41,6 @@ class BeethovenCommandBundler[T1 <: AccelCommand, T2 <: AccelResponse](
     when(cio.resp.fire) {
       am_active := false.B
     }
-    io_am_active := am_active
-  } else {
-    io_am_active := false.B
   }
   io.req.bits.elements.foreach { case (_, data) => data := DontCare }
   io.req.bits.getSystemID := outer.system_id.U
@@ -77,7 +72,7 @@ class BeethovenCommandBundler[T1 <: AccelCommand, T2 <: AccelResponse](
     cio.req.ready := req_state =/= s_done
     when(req_state === s_req_idle) {
       when(cio.req.fire) {
-        val reqsRecieved = reqCounter
+        val reqsRecieved = if (nReqBeatsRequired == 1) 0.U else reqCounter
         reqCounter := reqCounter + 1.U
         reqPayload(reqsRecieved) := Cat(
           cio.req.bits.payload1,
@@ -131,10 +126,10 @@ class BeethovenCommandBundler[T1 <: AccelCommand, T2 <: AccelResponse](
         flat.asUInt
       case _: SInt =>
         flat.asSInt
-      case fixedPoint: FixedPoint =>
-        flat.asFixedPoint(fixedPoint.binaryPoint)
-      case interval: Interval =>
-        flat.asInterval(interval.range)
+      // case fixedPoint: FixedPoint =>
+      //   flat.asFixedPoint(fixedPoint.binaryPoint)
+      // case interval: Interval =>
+      //   flat.asInterval(interval.range)
       case _ =>
         flat
     }

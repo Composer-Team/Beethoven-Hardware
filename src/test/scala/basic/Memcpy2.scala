@@ -1,13 +1,11 @@
 package basic
 
 import chisel3._
-import chisel3.stage.ChiselStage
 import chisel3.util._
-import firrtl.transforms.NoConstantPropagationAnnotation
-import firrtl.{AnnotationSeq, CustomDefaultMemoryEmission, CustomDefaultRegisterEmission, MemoryNoInit}
-import freechips.rocketchip.amba.axi4.AXI4BundleParameters
+import org.chipsalliance.diplomacy.amba.axi4.AXI4BundleParameters
 
 import scala.annotation.tailrec
+import _root_.circt.stage.ChiselStage
 
 object SHREG {
   @tailrec
@@ -281,10 +279,6 @@ class BeethovenTop(n_parallel: Int,
 
 object BeethovenTop {
   def main(args: Array[String]): Unit = {
-    (new ChiselStage).emitVerilog(new BeethovenTop(16, 64), annotations = AnnotationSeq(Seq(
-      CustomDefaultMemoryEmission(MemoryNoInit),
-      CustomDefaultRegisterEmission(useInitAsPreset = false, disableRandomization = true),
-//      NoConstantPropagationAnnotation
-    )))
+    ChiselStage.emitSystemVerilog(new BeethovenTop(16, 64))
   }
 }

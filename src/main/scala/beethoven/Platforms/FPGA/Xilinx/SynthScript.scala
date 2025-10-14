@@ -3,7 +3,7 @@ package beethoven.Platforms.FPGA.Xilinx
 import beethoven.BeethovenBuild
 import beethoven.common.tclMacro
 import beethoven.platform
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 
 case class SynthSet(
     setup: String,

@@ -2,7 +2,7 @@ package beethoven.Platforms.FPGA.Xilinx.AWS
 
 import beethoven._
 import beethoven.common._
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import beethoven.Generation.CppGeneration

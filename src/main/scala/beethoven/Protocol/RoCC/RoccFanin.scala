@@ -2,8 +2,8 @@ package beethoven.Protocol.RoCC
 
 import beethoven.Floorplanning.LazyModuleWithSLRs.LazyModuleWithFloorplan
 import beethoven._
-import chipsalliance.rocketchip.config.Parameters
-import freechips.rocketchip.diplomacy._
+import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy._
 import chisel3._
 import chisel3.util._
 

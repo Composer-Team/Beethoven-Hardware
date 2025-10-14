@@ -5,7 +5,7 @@
 //
 // package beethoven.Platforms.ASIC.ASAP7
 //
-//import chipsalliance.rocketchip.config.{Config, Parameters}
+//import org.chipsalliance.cde.config.{Config, Parameters}
 //import chisel3._
 //import chisel3.experimental.BaseModule
 //import beethoven.Generation.Annotators.{UniqueMv, WalkPath}

@@ -1,8 +1,8 @@
 package beethoven.Protocol.RoCC
 import beethoven.Floorplanning.LazyModuleWithSLRs.LazyModuleWithFloorplan
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3.util.Queue
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
+import org.chipsalliance.diplomacy.{LazyModule, LazyModuleImp}
 
 class RoccBuffer(val nEntries: Int = 2)(implicit p: Parameters)
     extends LazyModule {

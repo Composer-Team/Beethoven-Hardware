@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import beethoven._
 import beethoven.common._
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import intra.VecAddCoreCommand
 
 class DispatcherCore()(implicit p: Parameters) extends AcceleratorCore {
@@ -18,7 +18,7 @@ class DispatcherCore()(implicit p: Parameters) extends AcceleratorCore {
   
   val VecCoreSystemParams = p(AcceleratorSystems).filter(_.name == "VecCores")(0)
   val numCores = VecCoreSystemParams.nCores
-  println(s"num cores: $numCores")
+  // println(s"num cores: $numCores")
 
   val VecCoreIO = getIntraSysIO("VecCores", "vector_add", new VecAddCoreCommand(), new AccelRoccResponse())
 

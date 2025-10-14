@@ -3,7 +3,7 @@ package beethoven.Floorplanning
 import chisel3.experimental.BaseModule
 import chisel3._
 import beethoven.Floorplanning.LazyModuleWithSLRs.globalNameList
-import freechips.rocketchip.diplomacy._
+import org.chipsalliance.diplomacy._
 
 object LazyModuleImpWithSLRs {
   private var gl_id = 0
@@ -59,7 +59,7 @@ object LazyModuleImpWithSLRs {
       valName: ValName
   ): T = {
     val mod = Module(m)
-    val name = valName.name + "_" + gl_id
+    val name = valName.value + "_" + gl_id
     gl_id = gl_id + 1
     mod.suggestName(name)
     if (globalNameList.contains(name)) {

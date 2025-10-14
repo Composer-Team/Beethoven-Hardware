@@ -1,7 +1,7 @@
 package beethoven
 
 import beethoven.MemoryStreams._
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 
 case class ScratchpadConfig(
     name: String,

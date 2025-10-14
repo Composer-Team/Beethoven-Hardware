@@ -1,8 +1,8 @@
 package beethoven.Protocol.tilelink
 
-import chipsalliance.rocketchip.config.Parameters
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
-import freechips.rocketchip.tilelink.{TLEdgeIn, TLIdentityNode}
+import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy.{LazyModule, LazyModuleImp}
+import org.chipsalliance.diplomacy.tilelink.{TLEdgeIn, TLIdentityNode}
 
 class TLSupportCheckerImp(outer: TLSupportChecker)
     extends LazyModuleImp(outer) {

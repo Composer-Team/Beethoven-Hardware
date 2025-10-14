@@ -2,8 +2,8 @@ package beethoven.Protocol.tilelink
 
 import chisel3.util._
 import chisel3._
-import freechips.rocketchip.diplomacy.LazyModuleImp
-import freechips.rocketchip.tilelink.{TLBundleA, TLMessages}
+import org.chipsalliance.diplomacy.LazyModuleImp
+import org.chipsalliance.diplomacy.tilelink.{TLBundleA, TLMessages}
 
 class TLRWFilterImp(outer: TLRWFilter) extends LazyModuleImp(outer) {
   val in = outer.in_node.in.head._1

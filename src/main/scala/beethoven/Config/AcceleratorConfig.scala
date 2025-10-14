@@ -1,6 +1,6 @@
 package beethoven
 
-import chipsalliance.rocketchip.config.Config
+import org.chipsalliance.cde.config.Config
 
 case class AcceleratorConfig(configs: List[AcceleratorSystemConfig]) {
   private[beethoven] def toConfig: Config = {

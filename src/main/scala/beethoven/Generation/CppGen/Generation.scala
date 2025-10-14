@@ -1,6 +1,6 @@
 package beethoven.Generation.CppGen
 
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3.util._
 import beethoven.BuildMode.Simulation
 import beethoven.Generation.CPP.CommandParsing.customCommandToCpp
@@ -8,10 +8,9 @@ import beethoven.Generation.CPP.TypeParsing._
 import beethoven.Generation.CppGeneration._
 import beethoven.BeethovenParams.{CoreIDLengthKey, SystemIDLengthKey}
 import beethoven.Generation.CPP.safe_join
-import beethoven.Platforms.{BuildModeKey, PlatformHasSeparateDMA}
+import beethoven.Platforms.{BuildModeKey, PlatformHasDMA}
 import beethoven.Systems._
 import beethoven._
-import freechips.rocketchip.tile.XLen
 import os.Path
 
 import java.io.FileWriter
@@ -80,7 +79,7 @@ object Generation {
            |static const uint64_t addrMask = 0x${addrSet.mask.toLong.toHexString};
            |""".stripMargin,
         if (
-          platform.isInstanceOf[PlatformHasSeparateDMA] && p(
+          platform.isInstanceOf[PlatformHasDMA] && p(
             BuildModeKey
           ) != Simulation
         ) "#define BEETHOVEN_HAS_DMA"
@@ -99,7 +98,7 @@ object Generation {
               )};
              |using BeethovenMemIDDtype=$idDtype;
              |${platform match {
-                case pWithDMA: PlatformHasSeparateDMA =>
+                case pWithDMA: PlatformHasDMA =>
                   s"using BeethovenDMAIDtype=${getVerilatorDtype(pWithDMA.DMAIDBits)};";
                 case _ => ""
               }}
@@ -152,7 +151,7 @@ object Generation {
          |#ifndef BEETHOVEN_ALLOCATOR_GEN
          |#define BEETHOVEN_ALLOCATOR_GEN
          |#define AXIL_BUS_WIDTH ${platform.frontBusBeatBytes * 8}
-         |#define XLEN ${p(XLen)}
+         |#define XLEN 64
          |// allocator declarations backends that do not have discrete memory or for simulator
          |$allocator
          |// address bits used by FPGA

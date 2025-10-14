@@ -1,6 +1,6 @@
 package beethoven.Protocol.RoCC.Helpers
 
-import chipsalliance.rocketchip.config._
+import org.chipsalliance.cde.config._
 import chisel3.util._
 import chisel3._
 import beethoven._

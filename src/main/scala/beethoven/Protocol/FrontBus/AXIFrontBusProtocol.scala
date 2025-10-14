@@ -3,7 +3,7 @@ package beethoven.Protocol.FrontBus
 import beethoven.Floorplanning.DeviceContext
 import beethoven.Floorplanning.LazyModuleWithSLRs.LazyModuleWithFloorplan
 import beethoven.Generation.DotGen
-import chipsalliance.rocketchip.config.{Config, Parameters}
+import org.chipsalliance.cde.config.{Config, Parameters}
 import chisel3._
 import beethoven.Platforms._
 import beethoven._
@@ -13,13 +13,14 @@ import beethoven.Protocol.RoCC._
 import beethoven.Systems.BeethovenTop.getAddressSet
 import beethoven.Systems.make_tl_buffer
 import beethoven.platform
-import freechips.rocketchip.amba.axi4._
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.subsystem.MasterPortParams
-import freechips.rocketchip.tilelink.{TLBuffer, TLIdentityNode}
+import org.chipsalliance.diplomacy.amba.axi4._
+import org.chipsalliance.diplomacy._
+import org.chipsalliance.diplomacy.tilelink.{TLBuffer, TLIdentityNode}
+import beethoven.Protocol.AXI.AXILToTL
+import beethoven.Protocol.MasterPortParams
+import org.chipsalliance.diplomacy.resources.MemoryDevice
 
-class AXIFrontBusProtocol(withDMA: Boolean, nClocks: Int = 1)
-    extends FrontBusProtocol {
+class AXIFrontBusProtocol(nClocks: Int = 1) extends FrontBusProtocol {
   override def deriveTopIOs(
       config: Parameters
   )(implicit p: Parameters): Parameters = {
@@ -42,15 +43,16 @@ class AXIFrontBusProtocol(withDMA: Boolean, nClocks: Int = 1)
     )
     AXI4Compat.connectCompatSlave(S00_AXI, port_cast.out(0)._1)
 
-    if (withDMA) {
+    if (platform.isInstanceOf[PlatformHasDMA]) {
+      val dmaPlatform: PlatformHasDMA = platform.asInstanceOf[PlatformHasDMA]
       val dma = IO(
         Flipped(
           new AXI4Compat(
             MasterPortParams(
               base = 0,
               size = platform.extMem.master.size,
-              beatBytes = dma_cast.get.out(0)._1.r.bits.data.getWidth / 8,
-              idBits = platform.asInstanceOf[PlatformHasSeparateDMA].DMAIDBits
+              beatBytes = dmaPlatform.DMABusWidthBytes,
+              idBits = dmaPlatform.DMAIDBits
             )
           )
         )
@@ -141,7 +143,8 @@ class AXIFrontBusProtocol(withDMA: Boolean, nClocks: Int = 1)
           fronthub.axi_in := axi_master
           fronthub
         }
-      val (dma_node, dma_front) = if (withDMA) {
+      val (dma_node, dma_front) = if (platform.isInstanceOf[PlatformHasDMA]) {
+        val dmaPlatform: PlatformHasDMA = platform.asInstanceOf[PlatformHasDMA]
         val node = AXI4MasterNode(
           Seq(
             AXI4MasterPortParameters(
@@ -150,17 +153,22 @@ class AXIFrontBusProtocol(withDMA: Boolean, nClocks: Int = 1)
                   name = "S01_AXI",
                   maxFlight = Some(1),
                   aligned = true,
-                  id = IdRange(0, 1 << 6)
+                  id = IdRange(0, 1 << dmaPlatform.DMAIDBits)
                 )
               )
             )
           )
         )
         val dma2tl = TLIdentityNode()
+        val converter = if (dmaPlatform.DMAisLite) {
+          LazyModuleWithFloorplan(new AXILToTL(dmaPlatform.DMABusWidthBytes)).node
+        } else {
+          LazyModuleWithFloorplan(new LongAXI4ToTL(64)).node
+        }
         DeviceContext.withDevice(frontInterfaceID) {
           dma2tl :=
             make_tl_buffer() :=
-            LazyModuleWithFloorplan(new LongAXI4ToTL(64)).node :=
+            converter :=
             AXI4UserYanker(capMaxFlight = Some(1)) :=
             AXI4IdIndexer(1) :=
             AXI4Buffer() := node

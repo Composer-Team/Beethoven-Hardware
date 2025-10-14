@@ -3,10 +3,10 @@ package beethoven.MemoryStreams
 import beethoven.ChannelTransactionBundle
 import chisel3._
 import chisel3.util._
-import chipsalliance.rocketchip.config._
+import org.chipsalliance.cde.config._
 import beethoven.{BeethovenBuild, platform}
 import beethoven.common.{CLog2Up, Misc, Stack, splitIntoChunks}
-import freechips.rocketchip.tilelink._
+import org.chipsalliance.diplomacy.tilelink._
 
 class WriterDataChannelIO(val dWidth: Int) extends Bundle {
   val data = Flipped(Decoupled(UInt(dWidth.W)))

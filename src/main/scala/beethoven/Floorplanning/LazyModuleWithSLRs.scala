@@ -1,6 +1,6 @@
 package beethoven.Floorplanning
 
-import freechips.rocketchip.diplomacy._
+import org.chipsalliance.diplomacy._
 
 object LazyModuleWithSLRs {
   private[beethoven] var globalNameList: List[String] = List.empty

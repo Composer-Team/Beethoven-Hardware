@@ -1,8 +1,8 @@
 package beethoven.Protocol.tilelink.TLSlave
 
 import beethoven.Floorplanning.LazyModuleWithSLRs.LazyModuleWithFloorplan
-import chipsalliance.rocketchip.config.Parameters
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
+import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy.{LazyModule, LazyModuleImp}
 import chisel3._
 
 class TLToTLSlave()(implicit p: Parameters) extends LazyModule {

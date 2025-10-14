@@ -1,11 +1,10 @@
 package beethoven
 
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import BeethovenParams.{CoreIDLengthKey, SystemIDLengthKey}
 import beethoven.common.hasAccessibleUserSubRegions
-import freechips.rocketchip.tile.{RoCCCommand, XLen}
 
 sealed abstract class AbstractAccelCommand extends Bundle with hasAccessibleUserSubRegions {
   def getCoreID: UInt
@@ -42,10 +41,10 @@ sealed abstract class AbstractAccelCommand extends Bundle with hasAccessibleUser
 
 class AccelCommand(val commandName: String) extends AbstractAccelCommand {
   override val reservedNames = Seq("__core_id", "__system_id")
-  private[beethoven] val __core_id = UInt(CoreIDLengthKey.W)
-  private[beethoven] val __system_id = UInt(SystemIDLengthKey.W)
+  val __core_id = UInt(CoreIDLengthKey.W)
+  val __system_id = UInt(SystemIDLengthKey.W)
 
-  override def sortedElements: Seq[(String, Data)] = elements.toSeq.sortBy(_._1)
+  override def sortedElements: Seq[(String, Data)] = elements.toSeq
 
   def getCoreID: UInt = __core_id
 
@@ -116,8 +115,25 @@ class AccelRoccCommand extends AbstractAccelCommand {
   private[beethoven] def payloadWidth = payload1.getWidth + payload2.getWidth
 }
 
+class RoCCInstruction extends Bundle {
+  val funct = Bits(7.W)
+  val rs2 = Bits(5.W)
+  val rs1 = Bits(5.W)
+  val xd = Bool()
+  val xs1 = Bool()
+  val xs2 = Bool()
+  val rd = Bits(5.W)
+  val opcode = Bits(7.W)
+}
+
+class RoCCCommand(implicit p: Parameters) extends Bundle {
+  val inst = new RoCCInstruction
+  val rs1 = Bits(64.W)
+  val rs2 = Bits(64.W)
+}
+
 object AccelRoccCommand {
-  def packLengthBytes(implicit p: Parameters): Int = (32 + 2 * p(XLen)) / 8
+  def packLengthBytes(implicit p: Parameters): Int = (32 + 2 * 64) / 8
   def fromRoccCommand(gen: RoCCCommand)(implicit p: Parameters): AccelRoccCommand = {
     val wr = Wire(new AccelRoccCommand)
     wr.inst.xd := gen.inst.xd

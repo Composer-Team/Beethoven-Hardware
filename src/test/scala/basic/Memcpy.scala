@@ -1,10 +1,8 @@
 package basic
 
 import chisel3._
-import chisel3.stage.ChiselStage
 import chisel3.util._
-import firrtl.{AnnotationSeq, CustomDefaultMemoryEmission, CustomDefaultRegisterEmission, MemoryNoInit}
-import freechips.rocketchip.amba.axi4.AXI4BundleParameters
+import org.chipsalliance.diplomacy.amba.axi4.AXI4BundleParameters
 
 class AllocSource(n: Int) extends Module {
   val io = IO(new Bundle {

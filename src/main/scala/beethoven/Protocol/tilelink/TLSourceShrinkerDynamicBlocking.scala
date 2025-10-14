@@ -1,14 +1,15 @@
 // See LICENSE.SiFive for license details.
 
 package beethoven.Protocol.tilelink
-import Chisel._
+import chisel3._
+import chisel3.util._
 import beethoven.Protocol.tilelink.TLSlave
-import chipsalliance.rocketchip.config._
+import org.chipsalliance.cde.config._
 import beethoven.platform
 import chisel3.VecInit
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.tilelink._
-import freechips.rocketchip.util._
+import org.chipsalliance.diplomacy._
+import org.chipsalliance.diplomacy.tilelink._
+import org.chipsalliance.diplomacy.util._
 
 class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters)
     extends LazyModule {
@@ -68,12 +69,12 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters)
         !edgeIn.client.anySupportProbe || !edgeOut.manager.anySupportAcquireB
       )
 
-      out.b.ready := Bool(true)
-      out.c.valid := Bool(false)
-      out.e.valid := Bool(false)
-      in.b.valid := Bool(false)
-      in.c.ready := Bool(true)
-      in.e.ready := Bool(true)
+      out.b.ready := true.B
+      out.c.valid := false.B
+      out.e.valid := false.B
+      in.b.valid := false.B
+      in.c.ready := true.B
+      in.e.ready := true.B
 
       if (noShrinkRequired(edgeIn.client)) {
         out.a <> in.a
@@ -93,8 +94,8 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters)
             )
           )
         )
-        val d_last = beatsLeftPerAllocation(out.d.bits.source) === UInt(1)
-        val nextFree = PriorityEncoder((~allocated)())
+        val d_last = beatsLeftPerAllocation(out.d.bits.source) === 1.U
+        val nextFree = PriorityEncoder(~allocated)
         val full = allocated.andR
         val a_in_valid = RegInit(false.B)
         val a_in = Reg(in.a.bits)

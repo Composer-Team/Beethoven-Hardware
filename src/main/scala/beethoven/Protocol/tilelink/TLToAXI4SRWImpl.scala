@@ -3,8 +3,8 @@ package beethoven.Protocol.tilelink
 import beethoven.common.CLog2Up
 import chisel3.util._
 import chisel3._
-import freechips.rocketchip.amba.axi4._
-import freechips.rocketchip.diplomacy.LazyModuleImp
+import org.chipsalliance.diplomacy.amba.axi4._
+import org.chipsalliance.diplomacy.LazyModuleImp
 
 class TLToAXI4SRWImpl(outer: TLToAXI4SRW) extends LazyModuleImp(outer) {
   val tlManagers = outer.node

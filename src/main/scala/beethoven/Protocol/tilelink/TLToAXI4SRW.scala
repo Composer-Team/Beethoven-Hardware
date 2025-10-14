@@ -2,11 +2,12 @@
 
 package beethoven.Protocol.tilelink
 
-import chipsalliance.rocketchip.config._
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.amba.axi4._
+import org.chipsalliance.cde.config._
+import org.chipsalliance.diplomacy._
+import org.chipsalliance.diplomacy.amba.axi4._
+import org.chipsalliance.diplomacy.tilelink._
+import org.chipsalliance.diplomacy.nodes._
 import beethoven.platform
-import freechips.rocketchip.tilelink._
 
 class TLToAXI4SRW(implicit p: Parameters) extends LazyModule {
 

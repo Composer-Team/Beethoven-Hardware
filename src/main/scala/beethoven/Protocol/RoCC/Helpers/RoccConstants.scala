@@ -1,18 +1,11 @@
 package beethoven.Protocol.RoCC.Helpers
 
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util.log2Up
 import beethoven._
 import beethoven.common.Misc.round2Pow2
-import freechips.rocketchip.diplomacy.AddressSet
-import freechips.rocketchip.tile.OpcodeSet
-
-object BeethovenOpcode extends Enumeration {
-  val FLUSH = OpcodeSet.custom0.opcodes(0)
-  val ACCEL = OpcodeSet.custom3.opcodes(0)
-  type BeethovenOpcode = Int
-}
+import org.chipsalliance.diplomacy.AddressSet
 
 object BeethovenConsts {
 

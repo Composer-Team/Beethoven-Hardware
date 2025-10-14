@@ -1,6 +1,6 @@
 package beethoven.MemoryStreams
 
-import chipsalliance.rocketchip.config._
+import org.chipsalliance.cde.config._
 import chisel3._
 import chisel3.util._
 import beethoven._
@@ -14,9 +14,8 @@ import beethoven.MemoryStreams.Readers.{
   ReaderModuleIO,
   SequentialReader
 }
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.subsystem._
-import freechips.rocketchip.tilelink._
+import org.chipsalliance.diplomacy._
+import org.chipsalliance.diplomacy.tilelink._
 
 sealed abstract class ScratchpadPort extends Bundle {}
 
@@ -96,7 +95,6 @@ class MemoryScratchpad(csp: ScratchpadConfig)(implicit p: Parameters)
   )
   val channelWidthBytes: Int = platform.extMem.master.beatBytes
 
-  val blockBytes = p(CacheBlockBytes)
   lazy val module = new ScratchpadImpl(csp, this)
   val forceCustom = true
   val useLowResourceReader = csp.dataWidthBits
@@ -315,7 +313,7 @@ class ScratchpadImpl(csp: ScratchpadConfig, outer: MemoryScratchpad)
 
     val tx_ready = {
       val reader = if (outer.useLowResourceReader) {
-        println("use low resource")
+        // System.err.println("use low resource")
         val reader = Module(
           new LightweightReader(
             outer.channelWidthBytes * 8,
@@ -327,7 +325,7 @@ class ScratchpadImpl(csp: ScratchpadConfig, outer: MemoryScratchpad)
         linearReadInc()
         reader.io
       } else if (outer.very_small_sp) {
-        println("very small")
+        // System.err.println("very small")
         val reader = Module(
           new LightweightReader_small(
             dWidth = outer.channelWidthBytes * 8,
@@ -341,7 +339,7 @@ class ScratchpadImpl(csp: ScratchpadConfig, outer: MemoryScratchpad)
         linearReadInc()
         reader.io
       } else if (!outer.forceCustom) {
-        println("not small")
+        // println("not small")
         val reader = Module(
           new SequentialReader(
             outer.channelWidthBytes * 8,
@@ -353,7 +351,7 @@ class ScratchpadImpl(csp: ScratchpadConfig, outer: MemoryScratchpad)
         linearReadInc()
         reader.io
       } else {
-        println("else")
+        // println("else")
         val reader = Wire(
           Output(new ReadChannelIO(outer.channelWidthBytes * 8))
         )

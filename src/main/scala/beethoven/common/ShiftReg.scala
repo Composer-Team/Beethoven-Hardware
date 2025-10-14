@@ -2,10 +2,10 @@ package beethoven.common
 
 import beethoven.BeethovenBuild
 import beethoven.MemoryStreams.Memory
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.diplomacy.ValName
+import org.chipsalliance.diplomacy.ValName
 
 /** I've run into trouble in the past where Chisel3 shiftregisters give me
   * unexpected behavior, so I have these instead.
@@ -153,7 +153,7 @@ object ShiftReg {
       val sr = Module(
         new ShiftReg(latency, t.asUInt, allow_fpga_shreg = allow_fpga_shreg)
       )
-      sr.suggestName("shiftReg" + valName.name)
+      sr.suggestName("shiftReg" + valName.value)
       sr.io.in := t
       sr.io.clock := clock.asBool
       as(sr.io.out)

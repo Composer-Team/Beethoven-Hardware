@@ -1,6 +1,6 @@
 package beethoven
 
-import chipsalliance.rocketchip.config.{Config, Parameters}
+import org.chipsalliance.cde.config.{Config, Parameters}
 import beethoven.Generation._
 import beethoven.Platforms.FPGA.Xilinx.SynthScript
 import beethoven.Platforms.FPGA.Xilinx.getTclMacros
@@ -26,10 +26,8 @@ case class KriaPlatform(
   override val frontBusBaseAddress: Long = 0x2000000000L
   override val frontBusAddressNBits: Int = 40
   override val frontBusAddressMask: Long = 0xffffL
-  override val frontBusBeatBytes: Int = 4
-  override val frontBusProtocol: FrontBusProtocol = new AXIFrontBusProtocol(
-    false
-  )
+  override val frontBusBeatBytes: Int = 8
+  override val frontBusProtocol: FrontBusProtocol = new AXIFrontBusProtocol
 
   override val physicalMemoryBytes: Long = 4L << 30
   override val memorySpaceAddressBase: Long = 0x0

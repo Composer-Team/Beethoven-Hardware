@@ -4,7 +4,7 @@ import beethoven.Platforms.FPGA.Xilinx.SynthScript
 import beethoven.Platforms.FPGA.Xilinx.getTclMacros
 import beethoven.Platforms._
 import beethoven.{BeethovenBuild, BuildMode, U200Platform}
-import chipsalliance.rocketchip.config._
+import org.chipsalliance.cde.config._
 import os.Path
 import beethoven.common.tclMacro
 
@@ -26,12 +26,14 @@ trait AWSPlatform
 class AWSF1Platform(memoryNChannels: Int, val clock_recipe: String = "A0")
     extends U200Platform(memoryNChannels)
     with HasPostProccessorScript
-    with PlatformHasSeparateDMA
+    with PlatformHasDMA
     with HasXilinxMem
     with AWSPlatform {
   override val isActiveHighReset: Boolean = true
 
   override val DMAIDBits: Int = 6
+  override val DMAisLite: Boolean = false
+  override val DMABusWidthBytes: Int = 64
   override val clockRateMHz: Int = clock_recipe match {
     case "A0" => 125
     case "A1" => 250
@@ -166,10 +168,9 @@ class AWSF1Platform(memoryNChannels: Int, val clock_recipe: String = "A0")
     DeviceConfig(2, "pblock_CL_top")
   )
 
-  /** We won't _fail_ if we run out of memory, but there will be a warning and
-    * the memories will no longer be annotated with a specific memory type
-    * (e.g., URAM/BRAM). This should give Vivado the freedom it needs to
-    * potentially not fail placement
+  /** We won't _fail_ if we run out of memory, but there will be a warning and the memories will no
+    * longer be annotated with a specific memory type (e.g., URAM/BRAM). This should give Vivado the
+    * freedom it needs to potentially not fail placement
     */
   // 320 * (2/3) = 212
   // try to only use up to 80% (Xilinx Recommendation)

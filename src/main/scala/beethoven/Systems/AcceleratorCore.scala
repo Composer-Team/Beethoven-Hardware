@@ -9,10 +9,10 @@ import beethoven.Protocol.tilelink.MultiBeatCommandEmitter
 import beethoven.Systems._
 import beethoven.common._
 import beethoven._
-import chipsalliance.rocketchip.config._
+import org.chipsalliance.cde.config._
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.tilelink._
+import org.chipsalliance.diplomacy.tilelink._
 
 import scala.language.implicitConversions
 
@@ -21,8 +21,8 @@ class CustomIO[T1 <: AccelCommand, T2 <: AccelResponse](
     bundleOut: T2,
     respExists: Boolean
 ) extends Bundle {
-  private[beethoven] val _req: DecoupledIO[T1] = DecoupledIO(bundleIn)
-  private[beethoven] val _resp: Option[DecoupledIO[T2]] =
+  val _req: DecoupledIO[T1] = DecoupledIO(bundleIn)
+  val _resp: Option[DecoupledIO[T2]] =
     if (respExists) Some(Flipped(DecoupledIO(bundleOut))) else None
 
   def req: DecoupledIO[T1] = _req
@@ -416,11 +416,10 @@ class AcceleratorCore(implicit p: Parameters) extends Module {
       beethovenCustomCommandManager.cio.req <> io_declaration.req
     }
 
-    when(beethovenCustomCommandManager.io_am_active) {
-      io_declaration.resp.valid := beethovenCustomCommandManager.cio.resp.valid
-      io_declaration.resp.bits := beethovenCustomCommandManager.cio.resp.bits
-      beethovenCustomCommandManager.cio.resp.ready := io_declaration.resp.ready
-    }
+    io_declaration.resp.valid := beethovenCustomCommandManager.cio.resp.valid
+    io_declaration.resp.bits := beethovenCustomCommandManager.cio.resp.bits
+    beethovenCustomCommandManager.cio.resp.ready := io_declaration.resp.ready
+
 
     nCommands = nCommands + 1
     beethovenCustomCommandManager.io

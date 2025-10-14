@@ -1,6 +1,6 @@
 package beethoven.MemoryStreams.Readers
 
-import freechips.rocketchip.tilelink.TLBundle
+import org.chipsalliance.diplomacy.tilelink.TLBundle
 
 private[beethoven] trait ReaderModuleIO {
   val io: ReadChannelIO

@@ -1,16 +1,13 @@
 package beethoven.Platforms.FPGA.Xilinx.AWS
 
 import beethoven.Platforms.FPGA.Xilinx
-import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2Platform.{
-  check_if_setup,
-  initial_setup
-}
+import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2Platform.{check_if_setup, initial_setup}
 import beethoven.Platforms.FPGA.Xilinx.{Templates, getTclMacros}
 import beethoven.Platforms.PlatformType.PlatformType
 import beethoven.Platforms._
 import beethoven.Protocol.FrontBus.{AXIFrontBusProtocol, FrontBusProtocol}
 import beethoven._
-import chipsalliance.rocketchip.config._
+import org.chipsalliance.cde.config._
 import os.Path
 import beethoven.common.tclMacro
 
@@ -32,7 +29,7 @@ object AWSF2Platform {
 class AWSF2Platform(val remoteUsername: String = "ubuntu")
     extends Platform
     with HasPostProccessorScript
-    with PlatformHasSeparateDMA
+    with PlatformHasDMA
     with HasXilinxMem
     with AWSPlatform {
 
@@ -44,14 +41,12 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
   override val frontBusAddressNBits: Int = 16
   override val frontBusAddressMask: Long = 0xffff
   override val frontBusBeatBytes: Int = 4
-  override val frontBusProtocol: FrontBusProtocol = new AXIFrontBusProtocol(
-    true
-  )
+  override val frontBusProtocol: FrontBusProtocol = new AXIFrontBusProtocol
 
   override val physicalMemoryBytes: Long = 0x400000000L
   override val memorySpaceAddressBase: Long = 0x0
   override val memorySpaceSizeBytes: BigInt = BigInt(2).pow(64)
-  println(memorySpaceSizeBytes)
+  // println(memorySpaceSizeBytes)
   override val memoryControllerIDBits: Int = 16
   override val memoryControllerBeatBytes: Int = 64
 
@@ -59,7 +54,9 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
 
   override val isActiveHighReset: Boolean = false
 
-  override val DMAIDBits: Int = 16
+  override val DMAIDBits: Int = 0
+  override val DMABusWidthBytes: Int = 4
+  override val DMAisLite: Boolean = true
   override val clockRateMHz: Int = 250
 
   override val defaultReadTXConcurrency = 8
@@ -75,7 +72,10 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
       os.makeDir.all(gen_dir)
       os.makeDir.all(run_dir)
       os.proc("touch", top_file.toString()).call()
-      Shell.write(BeethovenBuild.hw_build_dir / "cl_beethoven_top.sv")(c)
+      Shell.write(
+        BeethovenBuild.hw_build_dir / "cl_beethoven_top.sv",
+        withDMA = Shell.DMAType.ViaSDA
+      )(c)
       Shell.write_header(
         BeethovenBuild.hw_build_dir / "cl_beethoven_top_defines.vh"
       )(c)
@@ -252,10 +252,9 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
     DeviceConfig(2, "pblock_CL_SRL2")
   )
 
-  /** We won't _fail_ if we run out of memory, but there will be a warning and
-    * the memories will no longer be annotated with a specific memory type
-    * (e.g., URAM/BRAM). This should give Vivado the freedom it needs to
-    * potentially not fail placement
+  /** We won't _fail_ if we run out of memory, but there will be a warning and the memories will no
+    * longer be annotated with a specific memory type (e.g., URAM/BRAM). This should give Vivado the
+    * freedom it needs to potentially not fail placement
     */
   // 320 * (2/3) = 212
   // try to only use up to 80% (Xilinx Recommendation)

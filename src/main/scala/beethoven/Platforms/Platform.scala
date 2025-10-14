@@ -1,15 +1,15 @@
 package beethoven.Platforms
 
 import beethoven.BuildMode
-import chipsalliance.rocketchip.config._
+import org.chipsalliance.cde.config._
 import beethoven.Platforms.ASIC.TechLib
 import beethoven.Platforms.ASIC.memoryCompiler.MemoryCompiler
 import beethoven.Platforms.PlatformType.PlatformType
 import beethoven.Protocol.FrontBus.FrontBusProtocol
-import freechips.rocketchip.subsystem.{MasterPortParams, MemoryPortParams}
 import os.Path
 
 import scala.annotation.tailrec
+import beethoven.Protocol._
 
 object PlatformType extends Enumeration {
   val FPGA, ASIC = Value
@@ -176,8 +176,10 @@ trait HasXilinxMem {
   val nBRAMs: Map[Int, Int]
 }
 
-trait PlatformHasSeparateDMA {
+trait PlatformHasDMA {
   val DMAIDBits: Int
+  val DMABusWidthBytes: Int
+  val DMAisLite: Boolean
 }
 
 trait HasPostProccessorScript {

@@ -1,10 +1,10 @@
 package beethoven.Protocol.AXI
 
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
+import org.chipsalliance.diplomacy.{LazyModule, LazyModuleImp}
 import chisel3._
 import beethoven._
-import chipsalliance.rocketchip.config.Parameters
-import freechips.rocketchip.amba.axi4.{
+import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy.amba.axi4.{
   AXI4MasterNode,
   AXI4MasterParameters,
   AXI4MasterPortParameters

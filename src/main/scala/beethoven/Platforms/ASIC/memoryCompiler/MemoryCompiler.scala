@@ -1,7 +1,7 @@
 package beethoven.Platforms.ASIC.memoryCompiler
 
-import chipsalliance.rocketchip.config
-import chipsalliance.rocketchip.config.{Config, Field, Parameters}
+import org.chipsalliance.cde.config
+import org.chipsalliance.cde.config.{Config, Field, Parameters}
 import chisel3._
 import chisel3.experimental.BaseModule
 import chisel3.util._

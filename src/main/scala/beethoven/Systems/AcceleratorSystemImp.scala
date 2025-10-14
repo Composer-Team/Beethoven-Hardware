@@ -1,13 +1,13 @@
 package beethoven.Systems
 
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import beethoven._
 import beethoven.Floorplanning.LazyModuleImpWithSLRs.ModuleWithFloorplan
 import beethoven.Floorplanning.ResetBridge
 import beethoven.MemoryStreams.Readers.SequentialReader
 import beethoven.MemoryStreams._
-import freechips.rocketchip.diplomacy.LazyModuleImp
+import org.chipsalliance.diplomacy.LazyModuleImp
 
 class AcceleratorSystemImp(val outer: AcceleratorSystem)(implicit p: Parameters)
     extends LazyModuleImp(outer) {

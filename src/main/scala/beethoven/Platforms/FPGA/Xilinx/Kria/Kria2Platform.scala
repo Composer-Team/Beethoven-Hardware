@@ -3,7 +3,7 @@ package beethoven
 import beethoven.Platforms.BuildModeKey
 import beethoven.Platforms.FPGA.Xilinx.getTclMacros
 import beethoven.Protocol.FrontBus._
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import os.Path
 import beethoven.common.tclMacro
 
@@ -21,7 +21,7 @@ class Kria2Platform(
       hasDebugAXICACHEPROT
     ) {
 
-  override val frontBusProtocol = new AXIFrontBusProtocolFastMem(false)
+  override val frontBusProtocol = new AXIFrontBusProtocolFastMem
 
   override def postProcessorMacro(p: Parameters, paths: Seq[Path]): Unit = {
     if (p(BuildModeKey) == BuildMode.Synthesis) {

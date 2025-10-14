@@ -3,15 +3,17 @@ package beethoven.Protocol.RoCC.Helpers
 import beethoven.Generation.CppGeneration
 import beethoven.Platforms.PlatformKey
 import beethoven.platform
-import chipsalliance.rocketchip.config._
+import org.chipsalliance.cde.config._
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.amba.axi4.AXI4IdentityNode
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
+import org.chipsalliance.diplomacy.amba.axi4.AXI4IdentityNode
+import org.chipsalliance.diplomacy.{LazyModule, LazyModuleImp}
+import os.makeDir.all
 
 class FrontBusWidget(implicit p: Parameters) extends LazyModule {
   val node = AXI4IdentityNode()
-  val crFile = LazyModule(new Protocol2RoccWidget(16))
+  val maxRegisters = 16
+  val crFile = LazyModule(new Protocol2RoccWidget(maxRegisters))
   crFile.node := node
   override lazy val module = new AXILWidgetModule(this)
 }
@@ -26,78 +28,77 @@ class AXILWidgetModule(outer: FrontBusWidget) extends LazyModuleImp(outer) {
       if (platform.hasDebugAXICACHEPROT) Some(Output(UInt(7.W))) else None
   })
 
-  var allocated = 0
-
-  def genPulsedBoolWO(
-      name: String,
-      drive: DecoupledIO[Bool],
-      init: Bool
-  ): Bool = {
-    drive.ready := true.B
-    val state = Reg(Bool())
-    state.suggestName(f"PulsedState$name")
-    val addr = allocated << log2Up(p(PlatformKey).frontBusBeatBytes)
-    CppGeneration.addPreprocessorDefinition(name, addr)
-    allocated += 1
-    state := init
-    when(drive.fire) {
-      state := drive.bits
-    }
-    state
-  }
-
-  def genRO[T <: Data](name: String, src: T, dst: DecoupledIO[T]): Unit = {
-    val addr = allocated << log2Up(p(PlatformKey).frontBusBeatBytes)
-    CppGeneration.addPreprocessorDefinition(name, addr)
-    allocated += 1
-
-    dst.bits := src
-    dst.valid := true.B
-  }
-
-  def genWO[T <: Data](name: String, dst: DecoupledIO[T], init: T): T = {
-    val addr = allocated << log2Up(p(PlatformKey).frontBusBeatBytes)
-    CppGeneration.addPreprocessorDefinition(name, addr)
-    allocated += 1
-
-    val state = RegInit(init)
-    state.suggestName(f"State${name}")
-    dst.ready := true.B
-    when(dst.fire) {
-      state := dst.bits
-    }
-
-    state
-  }
-
-  val roccCmdFifo = Module(new Queue(UInt(32.W), 16))
-  val roccRespFifo = Module(new Queue(UInt(32.W), 16))
-
+  val roccCmdFifo = Module(new Queue(UInt(32.W), outer.maxRegisters))
+  val roccRespFifo = Module(new Queue(UInt(32.W), outer.maxRegisters))
   val mcrio = outer.crFile.module.io.mcr
 
-  roccCmdFifo.io.enq.valid := genPulsedBoolWO(
-    "CMD_VALID",
-    mcrio.write(0).map(_(0).asBool),
-    false.B
-  )
-  roccCmdFifo.io.enq.bits := genWO("CMD_BITS", mcrio.write(1), 0.U)
-  genRO("CMD_READY", roccCmdFifo.io.enq.ready, mcrio.read(2))
+  var allocated = 0
 
-  genRO("RESP_VALID", roccRespFifo.io.deq.valid, mcrio.read(3))
-  genRO("RESP_BITS", roccRespFifo.io.deq.bits, mcrio.read(4))
-  roccRespFifo.io.deq.ready := genPulsedBoolWO(
-    "RESP_READY",
-    mcrio.write(5).map(a => a(0).asBool),
-    false.B
-  )
+  def genPulsedValid(name: String): Bool = {
+    require(allocated < outer.maxRegisters)
+    val state = RegInit(false.B)
+    mcrio.write(allocated).ready := true.B
+    when (mcrio.write(allocated).fire) {
+      state := mcrio.write(allocated).bits(0)
+    }.otherwise {
+      state := false.B
+    }
+    mcrio.read(allocated).valid := true.B
+    mcrio.read(allocated).bits := 0xFAFABCBCL.U
+    val addr = allocated << log2Up(p(PlatformKey).frontBusBeatBytes)
+    CppGeneration.addPreprocessorDefinition(name, addr)
+    allocated += 1
+    state
+  }
 
-  genRO("AXIL_DEBUG", 0xdeadcafeL.U(32.W), mcrio.read(6))
+  def genRO[T <: Data](name: String, src: T): Unit = {
+    require(allocated < outer.maxRegisters)
+    val addr = allocated << log2Up(p(PlatformKey).frontBusBeatBytes)
+    CppGeneration.addPreprocessorDefinition(name, addr)
+    mcrio.read(allocated).bits := src
+    mcrio.read(allocated).valid := true.B
+    mcrio.write(allocated).ready := true.B
+    allocated += 1
+  }
+
+  def genWO[T <: Data](name: String, init: UInt): UInt = {    
+    require(allocated < outer.maxRegisters)
+
+    val addr = allocated << log2Up(p(PlatformKey).frontBusBeatBytes)
+    CppGeneration.addPreprocessorDefinition(name, addr)
+
+    val state = RegInit(init)
+    mcrio.write(allocated).ready := true.B
+    when(mcrio.write(allocated).fire) {
+      state := mcrio.write(allocated).bits
+    }
+    mcrio.read(allocated).bits := 0xFAFABCBCL.U
+    mcrio.read(allocated).valid := true.B
+    allocated += 1
+    state
+  }
+
+  roccCmdFifo.io.enq.valid := genPulsedValid("CMD_VALID")
+  roccCmdFifo.io.enq.bits := genWO("CMD_BITS", 0.U(32.W))
+  genRO("CMD_READY", roccCmdFifo.io.enq.ready)
+
+  genRO("RESP_VALID", roccRespFifo.io.deq.valid)
+  genRO("RESP_BITS", roccRespFifo.io.deq.bits)
+  roccRespFifo.io.deq.ready := genPulsedValid("RESP_READY")
+
+  genRO("AXIL_DEBUG", 0xdeadcafeL.U(32.W))
 
   if (platform.hasDebugAXICACHEPROT) {
     val prot_cache = Wire(UInt(7.W))
-    prot_cache := genWO("CACHEPROT", mcrio.write(7), 0x7a.U(7.W))
+    prot_cache := genWO("CACHEPROT", 0x7a.U(7.W))
     io.cache_prot.get := prot_cache
   }
+
+  for (i <- allocated until outer.maxRegisters) {
+    mcrio.read(i) := DontCare
+    mcrio.write(i) := DontCare
+  }
+
   io.cmds <> roccCmdFifo.io.deq
   roccRespFifo.io.enq <> io.resp
 

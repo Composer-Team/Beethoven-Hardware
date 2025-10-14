@@ -3,7 +3,7 @@ package beethoven.Generation.Annotators
 import beethoven.Generation.CLogger
 import os.Path
 
-import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
+import scala.collection.parallel.CollectionConverters._
 
 object CrossBoundaryDisable {
   def apply(disableList: Seq[String], targetDir: Path): Unit = {

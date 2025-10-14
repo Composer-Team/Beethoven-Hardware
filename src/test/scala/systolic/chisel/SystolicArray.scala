@@ -3,7 +3,7 @@
 // import chisel3._
 // import chisel3.util._
 // import beethoven.common.ShiftReg
-// import chipsalliance.rocketchip.config.Parameters
+// import org.chipsalliance.cde.config.Parameters
 // import beethoven.common.ShiftRegEnable
 
 // class SystolicArray()(implicit p: Parameters) extends Module {

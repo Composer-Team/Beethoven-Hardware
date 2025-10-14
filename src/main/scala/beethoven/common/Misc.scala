@@ -1,9 +1,9 @@
 package beethoven.common
 
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.diplomacy.NodeHandle
+import org.chipsalliance.diplomacy._
 
 import scala.annotation.tailrec
 import scala.collection.SeqMap

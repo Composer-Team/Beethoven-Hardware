@@ -1,7 +1,7 @@
 package beethoven.MemoryStreams
 
 import beethoven.BuildMode
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import beethoven.MemoryStreams.RAM.SyncReadMemMem
@@ -13,7 +13,7 @@ import beethoven.Platforms.ASIC.memoryCompiler.{
 import beethoven.Platforms.FPGA.Xilinx.Templates.{BRAMSDP, BRAMTDP}
 import beethoven.Platforms._
 import beethoven.common.ShiftReg
-import freechips.rocketchip.diplomacy.ValName
+import org.chipsalliance.diplomacy.ValName
 
 object Memory {
 
@@ -205,10 +205,10 @@ object Memory {
                   fWidth,
                   fRows,
                   withWriteEnable || allocInfo.mux_degree.isDefined,
-                  debugName = debugName.getOrElse(valName.name)
+                  debugName = debugName.getOrElse(valName.value)
                 )
               )
-              cmem.suggestName(valName.name)
+              cmem.suggestName(valName.value)
 
               val (addrHigh, addrLow) =
                 splitAddr(allocInfo.mux_degree, mio.addr(0))
@@ -251,10 +251,10 @@ object Memory {
                   fWidth,
                   fRows,
                   withWriteEnable || allocInfo.mux_degree.isDefined,
-                  debugName = debugName.getOrElse(valName.name)
+                  debugName = debugName.getOrElse(valName.value)
                 )
               )
-              cmem.suggestName(valName.name)
+              cmem.suggestName(valName.value)
               val ridx = mio.getReadPortIdx(0)
               val widx = mio.getWritePortIdx(0)
               cmem.io.I := (allocInfo.mux_degree match {
@@ -303,10 +303,10 @@ object Memory {
                   fWidth,
                   fRows,
                   withWriteEnable || allocInfo.mux_degree.isDefined,
-                  debugName = debugName.getOrElse(valName.name)
+                  debugName = debugName.getOrElse(valName.value)
                 )
               )
-              cmem.suggestName(valName.name)
+              cmem.suggestName(valName.value)
               Seq(
                 (
                   cmem.io.A1,
@@ -389,7 +389,7 @@ object Memory {
               p(PlatformKey).clockRateMHz
             )
           )
-          cmem.suggestName(valName.name)
+          cmem.suggestName(valName.value)
           cmem.io
       }
     }

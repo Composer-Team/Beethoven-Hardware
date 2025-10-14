@@ -3,12 +3,12 @@ package beethoven.Protocol.AXI
 import beethoven.Protocol.AXI.AXI4Compat._
 import chisel3._
 import chisel3.util.log2Up
-import freechips.rocketchip.amba.axi4.{
+import org.chipsalliance.diplomacy.amba.axi4.{
   AXI4Bundle,
   AXI4BundleParameters,
   AXI4Parameters
 }
-import freechips.rocketchip.subsystem.MasterPortParams
+import beethoven.Protocol._
 
 class AXI4Compat(val param: MasterPortParams, userBits: Int = 0)
     extends Bundle {

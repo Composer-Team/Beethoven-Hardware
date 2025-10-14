@@ -1,8 +1,7 @@
 package beethoven.Protocol.tilelink
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import beethoven.Protocol.RoCC.Helpers.BeethovenOpcode.ACCEL
 import beethoven._
 
 class MultiBeatCommandEmitter[T <: AccelCommand](
@@ -41,7 +40,7 @@ class MultiBeatCommandEmitter[T <: AccelCommand](
         false.B,
         expectResponse.B
       )
-      out.bits.inst.opcode := ACCEL
+      out.bits.inst.opcode := 0.U
       out.bits.inst.funct := opCode.U
       out.bits.inst.core_id := command.getCoreID
       out.bits.inst.system_id := command.getSystemID

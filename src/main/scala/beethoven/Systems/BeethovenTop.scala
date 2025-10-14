@@ -1,7 +1,7 @@
 package beethoven.Systems
 
 import beethoven.Floorplanning.LazyModuleWithSLRs.LazyModuleWithFloorplan
-import chipsalliance.rocketchip.config._
+import org.chipsalliance.cde.config._
 import chisel3._
 import chisel3.util._
 import beethoven.Floorplanning.{
@@ -22,11 +22,9 @@ import beethoven.Protocol.tilelink.{
   TLToAXI4SRW
 }
 import beethoven.common._
-import freechips.rocketchip.amba.axi4._
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.subsystem._
-import freechips.rocketchip.tile._
-import freechips.rocketchip.tilelink._
+import org.chipsalliance.diplomacy.amba.axi4._
+import org.chipsalliance.diplomacy._
+import org.chipsalliance.diplomacy.tilelink._
 
 import scala.annotation.tailrec
 import scala.language.implicitConversions
@@ -138,9 +136,11 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
   // Generate accelerator SoC
   val devices: List[Subdevice] = platform.physicalDevices.map { dev =>
     val lm = LazyModuleWithFloorplan(
-      new Subdevice(dev.identifier)(p.alterPartial {
-        case TileVisibilityNodeKey => rocc_front
-      }),
+      new Subdevice(dev.identifier)(p
+      // .alterPartial {
+        // case TileVisibilityNodeKey => rocc_front
+      // }
+      ),
       dev.identifier,
       f"beethovenDevice${dev.identifier}"
     )
@@ -403,6 +403,7 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
 
 class TopImpl(outer: BeethovenTop)(implicit p: Parameters)
     extends LazyRawModuleImp(outer) {
+  override def provideImplicitClockToLazyChildren: Boolean = true
   val full_config =
     platform.frontBusProtocol.deriveTopIOs(outer.front_bus_config.alterPartial({
       case BeethovenInternalMemKey => outer.AXI_MEM

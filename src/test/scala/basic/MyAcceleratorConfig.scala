@@ -18,7 +18,7 @@ class MyAcceleratorConfig extends AcceleratorConfig(
   )
 
 object MyAcceleratorKria extends BeethovenBuild(new MyAcceleratorConfig,
-  buildMode = BuildMode.Simulation,
+  buildMode = BuildMode.Simulation, 
   platform = new AWSF2Platform())
 
 object MyAcceleratorKriaClocks extends BeethovenBuild(new MyAcceleratorConfig,

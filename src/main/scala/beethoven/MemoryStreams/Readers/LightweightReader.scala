@@ -2,10 +2,10 @@ package beethoven.MemoryStreams.Readers
 
 import beethoven.common.CLog2Up
 import beethoven.{BeethovenBuild, platform}
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.tilelink.{TLBundle, TLBundleA, TLEdgeOut}
+import org.chipsalliance.diplomacy.tilelink.{TLBundle, TLBundleA, TLEdgeOut}
 
 /** All user-facing memory endpoints need to guarantee storage. This reader
   * implementation does not guarantee storage and relies on the endpoint to

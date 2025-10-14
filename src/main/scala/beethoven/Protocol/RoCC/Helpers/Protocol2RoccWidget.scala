@@ -3,11 +3,11 @@ package beethoven.Protocol.RoCC.Helpers
 import chisel3._
 import chisel3.util._
 import beethoven._
-import freechips.rocketchip.amba.axi4._
-import chipsalliance.rocketchip.config._
+import org.chipsalliance.diplomacy.amba.axi4._
+import org.chipsalliance.cde.config._
 import beethoven.Platforms._
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.util._
+import org.chipsalliance.diplomacy._
+import org.chipsalliance.diplomacy.util._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -77,7 +77,6 @@ class MCRIO(numCRs: Int)(implicit p: Parameters)
   val read =
     Vec(numCRs, Flipped(Decoupled(UInt((p(CmdRespBusWidthBytes) * 8).W))))
   val write = Vec(numCRs, Decoupled(UInt((p(CmdRespBusWidthBytes) * 8).W)))
-  val wstrb = Output(UInt(p(CmdRespBusWidthBytes).W))
 
   def bindReg(reg: RegisterEntry, addr: Int): Unit = {
     if (reg.permissions.writeable) {

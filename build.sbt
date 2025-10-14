@@ -1,8 +1,7 @@
+val chiselVersion = "7.1.0"
+val myScalaVersion = "2.13.16"
 
-val chiselVersion = "3.5.6"
-
-ThisBuild / scalaVersion := "2.13.10"
-
+This / scalaVersion := myScalaVersion
 // organization := "edu.duke.cs.apex"
 // homepage := Some(url("https://github.com/Composer-Team/Beethoven-Hardware"))
 // scmInfo := Some(ScmInfo(url("https://github.com/Composer-Team/Beethoven-Hardware"),
@@ -22,17 +21,22 @@ ThisBuild / scalaVersion := "2.13.10"
 //     Opts.resolver.sonatypeStaging
 // )
 
-lazy val beethoven =(project in file(".")).settings(
+lazy val beethoven = (project in file(".")).settings(
   name := "beethoven-hardware",
-  version := "0.0.51",
+  version := "0.0.52",
   organization := "edu.duke.cs.apex",
   libraryDependencies ++= Seq(
-    "edu.berkeley.cs" %% "chisel3" % chiselVersion,
-    "edu.duke.cs.apex" %% "rocketchip-rocketchip-fork" % "0.1.12",
-    "edu.berkeley.cs" %% "chiseltest" % "0.5.2"
+    "org.chipsalliance" %% "chisel" % chiselVersion,
+    "edu.duke.cs.apex" %% "diplomacy" % "0.0.2",
+    "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
   ),
-  resolvers += ("reposilite-repository-releases" at "http://54.165.244.214:8080/releases").withAllowInsecureProtocol(true),
-  publishTo := Some(("reposilite-repository" at "http://54.165.244.214:8080/releases/").withAllowInsecureProtocol(true)),
+  resolvers += ("reposilite-repository-releases" at "http://54.165.244.214:8080/releases")
+    .withAllowInsecureProtocol(true),
+  publishTo := Some(
+    ("reposilite-repository" at "http://54.165.244.214:8080/releases/").withAllowInsecureProtocol(
+      true
+    )
+  ),
   credentials += Credentials(Path.userHome / ".sbt" / ".credentials"),
-  addCompilerPlugin("edu.berkeley.cs" % "chisel3-plugin" % chiselVersion cross CrossVersion.full)
+  addCompilerPlugin("org.chipsalliance" % "chisel-plugin" % chiselVersion cross CrossVersion.full)
 )

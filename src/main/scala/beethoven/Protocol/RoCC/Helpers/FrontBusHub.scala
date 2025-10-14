@@ -3,11 +3,10 @@ package beethoven.Protocol.RoCC.Helpers
 import beethoven.Protocol.RoCC.{RoccClientNode, RoccMasterParams}
 import beethoven.platform
 import chisel3._
-import chipsalliance.rocketchip.config._
-import freechips.rocketchip.amba.axi4.AXI4IdentityNode
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.tile._
-import freechips.rocketchip.tilelink.TLIdentityNode
+import org.chipsalliance.cde.config._
+import org.chipsalliance.diplomacy.amba.axi4.AXI4IdentityNode
+import org.chipsalliance.diplomacy._
+import org.chipsalliance.diplomacy.tilelink.TLIdentityNode
 
 class FrontBusHub(implicit p: Parameters) extends LazyModule {
 
@@ -21,9 +20,12 @@ class FrontBusHub(implicit p: Parameters) extends LazyModule {
 
   val rocc_out = RoccClientNode(RoccMasterParams())
 
-  lazy val module = new AXILHubModule(this)(p.alterPartial {
-    case TileVisibilityNodeKey => axi_in
-  })
+  lazy val module = new AXILHubModule(this)(
+    p
+    // .alterPartial {
+    // case TileVisibilityNodeKey => axi_in
+  // }
+  )
 }
 
 class AXILHubModule(outer: FrontBusHub)(implicit p: Parameters)

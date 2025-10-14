@@ -11,7 +11,7 @@ import chisel3._
 import chisel3.util._
 import beethoven._
 import beethoven.common._
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF1Platform
 import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2XDMAWorkarounds
 import beethoven.Platforms.FPGA.Xilinx.AWS.DMAHelperConfig

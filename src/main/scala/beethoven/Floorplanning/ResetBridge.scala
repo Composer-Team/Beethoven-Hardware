@@ -2,7 +2,7 @@ package beethoven.Floorplanning
 
 import chisel3._
 import beethoven.common.ShiftReg
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 
 object ResetBridge {
   def apply[T <: Reset](dut: T, bridgeDelay: Int)(implicit p: Parameters): T = {

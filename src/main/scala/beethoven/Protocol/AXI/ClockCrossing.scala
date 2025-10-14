@@ -3,9 +3,9 @@ package beethoven.Protocol.AXI
 import beethoven.Platforms.FPGA.Xilinx.AXI_ClockFIFO
 import beethoven.Platforms.PlatformType
 import beethoven.platform
-import chipsalliance.rocketchip.config.Parameters
-import freechips.rocketchip.amba.axi4.AXI4AdapterNode
-import freechips.rocketchip.diplomacy._
+import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy.amba.axi4.AXI4AdapterNode
+import org.chipsalliance.diplomacy._
 import chisel3._
 
 class ClockCrossing()(implicit p: Parameters) extends LazyModule {

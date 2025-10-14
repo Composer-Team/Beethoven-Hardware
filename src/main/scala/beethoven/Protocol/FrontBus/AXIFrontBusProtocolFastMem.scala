@@ -3,13 +3,12 @@ package beethoven.Protocol.FrontBus
 import beethoven.BuildMode
 import beethoven.Platforms.BuildModeKey
 import beethoven.Protocol.AXI.{AXI4Compat, ClockCrossing}
-import chipsalliance.rocketchip.config.{Field, Parameters}
-import freechips.rocketchip.diplomacy.LazyModule
+import org.chipsalliance.cde.config.{Field, Parameters}
+import org.chipsalliance.diplomacy.LazyModule
 
 case object FastMemClockCross extends Field[Seq[ClockCrossing]]
 
-class AXIFrontBusProtocolFastMem(withDMA: Boolean)
-    extends AXIFrontBusProtocol(withDMA = withDMA, nClocks = 2) {
+class AXIFrontBusProtocolFastMem extends AXIFrontBusProtocol(nClocks = 2) {
   override def deriveTLSources(implicit p: Parameters): Parameters = {
     val p_conf = super.deriveTLSources(p)
     if (p(BuildModeKey) == BuildMode.Synthesis) {

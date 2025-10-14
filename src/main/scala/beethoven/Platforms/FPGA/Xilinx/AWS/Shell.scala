@@ -1,17 +1,31 @@
 package beethoven.Platforms.FPGA.Xilinx.AWS
 
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import os.Path
 
 object Shell {
-  def write(toPath: Path)(implicit p: Parameters): Unit = {
+  object DMAType extends Enumeration {
+    type DMAType = Value
+    val ViaDMA, ViaSDA = Value
+  }
+
+  def write(toPath: Path, withDMA: DMAType.DMAType)(implicit
+      p: Parameters
+  ): Unit = {
     val aw_ar_sigs = Seq("addr", "id", "len", "size", "burst", "valid", "ready")
     val aw_ar_ignore = Seq("lock", "cache", "prot", "region", "qos")
-
     val w_sigs = Seq("data", "strb", "last", "valid", "ready")
     val r_sigs = Seq("id", "resp", "last", "valid", "data", "ready")
-
     val b_sigs = Seq("id", "resp", "valid", "ready")
+
+    val l_aw_ar_sigs = Seq("addr", "valid", "ready")
+    val l_w_sigs = Seq("data", "strb", "valid", "ready")
+    val l_r_sigs = Seq("resp", "valid", "data", "ready")
+    val l_b_sigs = Seq("resp", "valid", "ready")
+    val l_ar_ar_ignore = aw_ar_ignore ++ Seq("id", "len", "size", "burst")
+    val l_w_ignore = Seq("last")
+    val l_r_ignore = Seq("last", "id")
+    val l_b_ignore = Seq("id")
 
     val ddr_connects = {
       val aw_connect =
@@ -29,17 +43,42 @@ object Shell {
     }
 
     val dma_connects = {
-      val aw_connect =
-        aw_ar_sigs.map(sig => f".dma_aw$sig(sh_cl_dma_pcis_aw$sig)")
-      val ar_connect =
-        aw_ar_sigs.map(sig => f".dma_ar$sig(sh_cl_dma_pcis_ar$sig)")
-      val w_connect = w_sigs.map(sig => f".dma_w$sig(sh_cl_dma_pcis_w$sig)")
-      val r_connect = r_sigs.map(sig => f".dma_r$sig(sh_cl_dma_pcis_r$sig)")
-      val b_connect = b_sigs.map(sig => f".dma_b$sig(sh_cl_dma_pcis_b$sig)")
-      val aw_ignore = aw_ar_ignore.map(sig => f".dma_aw$sig()")
-      val ar_ignore = aw_ar_ignore.map(sig => f".dma_ar$sig()")
-      (aw_connect ++ ar_connect ++ w_connect ++ r_connect ++ b_connect ++ aw_ignore ++ ar_ignore)
-        .mkString(",\n    ")
+      val (sig_set, prefix) = withDMA match {
+        case DMAType.ViaDMA =>
+          (
+            (aw_ar_ignore, w_sigs, r_sigs, b_sigs, Seq(("aw", aw_ar_ignore), ("ar", aw_ar_ignore))),
+            "sh_cl_dma_pcis_"
+          )
+        case DMAType.ViaSDA =>
+          (
+            (
+              l_aw_ar_sigs,
+              l_w_sigs,
+              l_r_sigs,
+              l_b_sigs,
+              Seq(
+                ("ar", l_ar_ar_ignore),
+                ("aw", l_ar_ar_ignore),
+                ("w", l_w_ignore),
+                ("r", l_r_ignore),
+                ("b", l_b_ignore)
+              )
+            ),
+            "sda_dma_bus."
+          )
+      }
+
+      val aw_connect = aw_ar_sigs.map(sig => f".dma_aw$sig(${prefix}aw$sig)")
+      val ar_connect = aw_ar_sigs.map(sig => f".dma_ar$sig(${prefix}ar$sig)")
+      val w_connect = w_sigs.map(sig => f".dma_w$sig(${prefix}w$sig)")
+      val r_connect = r_sigs.map(sig => f".dma_r$sig(${prefix}r$sig)")
+      val b_connect = b_sigs.map(sig => f".dma_b$sig(${prefix}b$sig)")
+      val ignores = sig_set._5.flatMap { case (pref, sigs) =>
+        sigs.map(s => f".dma_$pref$s()")
+      }
+      val w_ignore =
+        (aw_connect ++ ar_connect ++ w_connect ++ r_connect ++ b_connect ++ ignores)
+          .mkString(",\n    ")
     }
 
     val aw_ar_lsigs = Seq("addr", "valid", "ready")
@@ -149,7 +188,7 @@ object Shell {
          |  axi_bus_t #(.ADDR_WIDTH(64), .ID_WIDTH(16), .DATA_WIDTH(512))   axi_bus_tied();
          |  axi_bus_t #(.ADDR_WIDTH(64), .ID_WIDTH(16), .DATA_WIDTH(512))   sh_cl_dma_pcis_bus();
          |  axi_bus_t #(.ADDR_WIDTH(32), .ID_WIDTH(1), .DATA_WIDTH(32))   sh_ocl_bus();
-         |
+         |  axi_bus_t #(.ADDR_WIDTH(32), .ID_WIDTH(1), .DATA_WIDTH(32))   sda_dma_bus();
          |  //----------------------------
          |  // End internal interfaces
          |  //----------------------------
@@ -517,15 +556,33 @@ object Shell {
          |`include "unused_pcim_template.inc"
          |
          |//////////////////// SDA module ///////////////////////////////////////
-         |  `include "unused_cl_sda_template.inc"
+         |  assign sda_dma_bus.awvalid       = sda_cl_awvalid;
+         |  assign sda_dma_bus.awaddr[31:0]  = sda_cl_awaddr;
+         |  assign cl_sda_awready           = sda_dma_bus.awready;
          |
+         |  assign sda_dma_bus.wdata[31:0]   = sda_cl_wdata;
+         |  assign sda_dma_bus.wstrb[3:0]    = sda_cl_wstrb;
+         |  assign sda_dma_bus.wvalid        = sda_cl_wvalid;
+         |  assign cl_sda_wready            = sda_dma_bus.wready;
+         |
+         |  assign cl_sda_bresp             = sda_dma_bus.bresp;
+         |  assign cl_sda_bvalid            = sda_dma_bus.bvalid;
+         |  assign sda_dma_bus.bready        = sda_cl_bready;
+         |
+         |  assign sda_dma_bus.araddr[31:0]  = sda_cl_araddr;
+         |  assign sda_dma_bus.arvalid       = sda_cl_arvalid;
+         |  assign cl_sda_arready           = sda_dma_bus.arready;
+         |
+         |  assign cl_sda_rresp             = sda_dma_bus.rresp;
+         |  assign cl_sda_rdata             = sda_dma_bus.rdata[31:0];
+         |  assign cl_sda_rvalid            = sda_dma_bus.rvalid;
+         |  assign sda_dma_bus.rready        = sda_cl_rready;
          |//////////////////// IRQ module ///////////////////////////////////////
          |`include "unused_apppf_irq_template.inc"
          |
          |//////////////////// FLR module ///////////////////////////////////////
          |`include "unused_flr_template.inc"
          |////////////////// Frequency module ///////////////////////////////////
-         |
          |
          |///////////////////////////////////////////////////////////////////////
          |//////////////////// Debug module /////////////////////////////////////
@@ -569,8 +626,6 @@ object Shell {
          |    $ddr_connects,
          |    $dma_connects,
          |    $ocl_connects);
-         |
-         |
          |
          |endmodule
          |""".stripMargin

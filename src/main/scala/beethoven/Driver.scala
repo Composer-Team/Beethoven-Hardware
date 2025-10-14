@@ -7,31 +7,36 @@ import beethoven.Generation.Annotators.{CrossBoundaryDisable, WalkPath}
 import beethoven.Generation.{Annotators, vcs}
 import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF1Platform
 import beethoven.Platforms._
-import firrtl._
+import org.chipsalliance.diplomacy._
 import firrtl.options.PhaseManager.PhaseDependency
 import firrtl.options._
-import firrtl.stage.RunFirrtlTransformAnnotation
-import freechips.rocketchip.stage._
+import circt.stage._
+// import firrtl.stage.RunFirrtlTransformAnnotation
+// import freechips.rocketchip.stage._
 import os._
 
 import java.util.regex._
-import firrtl.transforms.DeadCodeElimination
+// import firrtl.transforms.DeadCodeElimination
+import chisel3.stage.ChiselGeneratorAnnotation
+import beethoven.Systems.BeethovenTop
+import chisel3.stage.phases.Elaborate
+import chisel3.stage.phases.Convert
+import firrtl.AnnotationSeq
+import circt.stage.SplitVerilog
 
-class BeethovenChipStage extends Stage with Phase {
-  override val shell = new Shell("beethoven-compile")
-  val targets: Seq[PhaseDependency] = Seq(
-    Dependency[freechips.rocketchip.stage.phases.Checks],
-    Dependency[beethoven.Generation.Stage.PreElaborationPass],
-    Dependency[chisel3.stage.phases.Checks],
-    Dependency[chisel3.stage.phases.MaybeAspectPhase],
-    Dependency[chisel3.stage.phases.Convert], // convert chirrtl to firrtl
-    Dependency[firrtl.stage.phases.Compiler]
-  )
+class BeethovenChipStage extends ChiselStage {
+  // override val shell = new Shell("beethoven-compile")
+  // val targets: Seq[PhaseDependency] = Seq(
+  //   Dependency[beethoven.Generation.Stage.PreElaborationPass],
+  //   Dependency[chisel3.stage.phases.Checks],
+  //   Dependency[chisel3.stage.phases.Convert], // convert chirrtl to firrtl
+  //   Dependency[firrtl.stage.phases.Compiler]
+  // )
 
-  private val pm = new PhaseManager(targets)
+  // private val pm = new PhaseManager(targets)
 
-  override def run(annotations: AnnotationSeq): AnnotationSeq =
-    pm.transform(annotations)
+  // override def run(annotations: AnnotationSeq): AnnotationSeq =
+  //   pm.transform(annotations)
 }
 
 object BeethovenBuild {
@@ -134,11 +139,10 @@ class BeethovenBuild(
 //    println("Running with " + Runtime.getRuntime.freeMemory() + "B memory")
 //    println(Runtime.getRuntime.maxMemory.toString + "B")
     BuildArgs.args = Map.from(
-      args.filter(str => str.length >= 2 && str.substring(0, 2) == "-D").map {
-        opt =>
-          val pr = opt.substring(2).split("=")
-          //          println(pr(0) + " " + pr(1))
-          (pr(0), pr(1).toInt)
+      args.filter(str => str.length >= 2 && str.substring(0, 2) == "-D").map { opt =>
+        val pr = opt.substring(2).split("=")
+        //          println(pr(0) + " " + pr(1))
+        (pr(0), pr(1).toInt)
       }
     )
 
@@ -160,29 +164,23 @@ class BeethovenBuild(
     // config.configs.foreach {
     //   a: AcceleratorSystemConfig =>
     //     a.moduleConstructor.estimateFPGAResources(a.moduleConstructor match {
-    //       case ModuleBuilder(constructor) => 
+    //       case ModuleBuilder(constructor) =>
     //         () => constructor(configWithBuildMode)
     //     })(configWithBuildMode)
     // }
-
-    new BeethovenChipStage().transform(
-      AnnotationSeq(
-        Seq(
-          // if you want to get annotation output for debugging, uncomment the following line
-          new EmitAllModulesAnnotation(classOf[VerilogEmitter]),
-          new TargetDirAnnotation(hw_build_dir.toString()),
-          new TopModuleAnnotation(
-            Class.forName("beethoven.Systems.BeethovenTop")
-          ),
-          Generation.Stage.ConfigsAnnotation(configWithBuildMode),
-          CustomDefaultMemoryEmission(MemoryNoInit),
-          CustomDefaultRegisterEmission(
-            useInitAsPreset = false,
-            disableRandomization = true
-          ),
-          RunFirrtlTransformAnnotation(new VerilogEmitter)
-//          NoDCEAnnotation,
-//          NoConstantPropagationAnnotation
+    (new ChiselStage).execute(
+      Array(
+        "--target-dir",
+        s"${BeethovenBuild.hw_build_dir}",
+        "--target",
+        "systemverilog",
+        "--split-verilog"
+      ),
+      Seq(
+        ChiselGeneratorAnnotation(() => LazyModule(new BeethovenTop()(configWithBuildMode)).module),
+        FirtoolOption("--disable-all-randomization"),
+        FirtoolOption(
+          "--lowering-options=locationInfoStyle=wrapInAtSquareBracket,mitigateVivadoArrayIndexConstPropBug,locationInfoStyle=wrapInAtSquareBracket,disallowLocalVariables"
         )
       )
     )
@@ -190,9 +188,7 @@ class BeethovenBuild(
     os.remove.all(hw_build_dir / "firrtl_black_box_resource_files.f")
     val allChiselGeneratedSrcs = WalkPath(hw_build_dir)
     val chiselGeneratedSrcs = allChiselGeneratedSrcs
-      .filter(a =>
-        !a.toString().contains("ShiftReg") && !a.toString().contains("Queue")
-      )
+      .filter(a => !a.toString().contains("ShiftReg") && !a.toString().contains("Queue"))
       .filter(a => !a.toString().contains("txt"))
     val shifts = allChiselGeneratedSrcs.filter(a =>
       a.toString().contains("ShiftReg") || a.toString().contains("Queue")
@@ -228,7 +224,7 @@ class BeethovenBuild(
       val tc_axi = (0 until platform.extMem.nMemoryChannels) map { idx =>
         beethoven.Generation.Annotators.AnnotateXilinxInterface(
           f"M0${idx}_AXI",
-          (hw_build_dir / "BeethovenTop.v").toString(),
+          (hw_build_dir / "BeethovenTop.sv").toString(),
           XilinxInterface.AXI4
         )
         Some(f"M0${idx}_AXI")
@@ -237,7 +233,7 @@ class BeethovenBuild(
       val tc_front = {
         beethoven.Generation.Annotators.AnnotateXilinxInterface(
           "S00_AXI",
-          (hw_build_dir / "BeethovenTop.v").toString(),
+          (hw_build_dir / "BeethovenTop.sv").toString(),
           XilinxInterface.AXI4
         )
         Some("S00_AXI")
@@ -247,7 +243,7 @@ class BeethovenBuild(
         .mkString(":")
       Annotators.AnnotateTopClock(
         f"\\(\\* X_INTERFACE_PARAMETER = \"ASSOCIATED_BUSIF $tcs \" \\*\\)",
-        hw_build_dir / "BeethovenTop.v"
+        hw_build_dir / "BeethovenTop.sv"
       )
     }
 
@@ -259,7 +255,16 @@ class BeethovenBuild(
         )})\n"""
     )
 //    println("wrote to " + gsrc_dir / "vcs_srcs.in")
-    val allSrcs = chiselGeneratedSrcs.filter(!os.isDir(_)).toList ++ movedSrcs.filter(a => !os.isDir(a)).toList
+    val allSrcs =
+      (chiselGeneratedSrcs.filter(!os.isDir(_)).toList ++ movedSrcs.filter(a => !os.isDir(a)).toList).filter{
+        p => 
+          val i = p.toString().lastIndexOf(".")
+          // println(p + " " + p.toString().substring(i))
+          p.toString().substring(i) match {
+            case ".v" | ".sv" | ".svh" => true
+            case _ => false
+          }
+      }
     os.write.over(
       top_build_dir / "vcs_srcs.in",
       allSrcs.mkString("\n")

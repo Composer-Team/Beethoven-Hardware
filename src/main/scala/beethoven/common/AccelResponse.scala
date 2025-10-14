@@ -1,11 +1,10 @@
 package beethoven
 
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import BeethovenParams.{CoreIDLengthKey, SystemIDLengthKey}
 import beethoven.common.hasAccessibleUserSubRegions
-import freechips.rocketchip.tile.XLen
 
 import scala.language.experimental.macros
 
@@ -19,7 +18,7 @@ object hasRoccResponseFields {
     fsrs.foreach { case (name: String, (high: Int, low: Int)) =>
       wire.elements(name) := in(high, low)
     }
-    val xlen = p(XLen)
+    val xlen = 64
     wire.rd := in(xlen+5 - 1, xlen)
     wire.system_id := in(xlen - 1 + 5 + SystemIDLengthKey, xlen + 5)
     wire.core_id := in(xlen - 1 + 5 + SystemIDLengthKey + CoreIDLengthKey, xlen + 5 + SystemIDLengthKey)
@@ -82,7 +81,7 @@ class AccelRoccResponse extends AccelRoccUserResponse with hasRoccResponseFields
 }
 
 object AccelRoccResponse {
-  def getWidthBits(implicit p: Parameters): Int = p(XLen) + 32
+  def getWidthBits(implicit p: Parameters): Int = 64 + 32
   def getWidthBytes(implicit p: Parameters): Int = getWidthBits / 8
   def getPow2Bytes(implicit p: Parameters): Int = 1 << log2Up(getWidthBytes)
 }

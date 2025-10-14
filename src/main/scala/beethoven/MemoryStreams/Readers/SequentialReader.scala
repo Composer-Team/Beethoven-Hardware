@@ -5,10 +5,10 @@ import beethoven.MemoryStreams.RAM.SyncReadMemMem
 import beethoven.MemoryStreams.Memory
 import beethoven.Platforms._
 import beethoven.common.{CLog2Up, ShiftReg}
-import chipsalliance.rocketchip.config._
+import org.chipsalliance.cde.config._
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.tilelink._
+import org.chipsalliance.diplomacy.tilelink._
 
 object SequentialReader {
   private var has_warned_dp: Boolean = false
@@ -75,7 +75,7 @@ class SequentialReader(
   // has to be pow2 to ensure OHToUInt works like we want
 
   if (nSources - 1 > prefetchDepthRows) {
-    println(
+    System.err.println(
       s"CReader was parameterized with maxInFlightTxs($nSources), but only prefetches $prefetchDepthRows rows." +
         s" Consider increasing the number of prefetched rows to at least $nSources or decrease the number of sources." +
         s" Having more source bits than necessary may increase the resource utilization of your design."
@@ -383,7 +383,7 @@ class SequentialReader(
     }
   }
 
-  channel_buffer := channels(data_channel_read_idx)
+  channel_buffer := channels(data_channel_read_idx.tail(1))
 
   val read_enable_pipeline = ShiftReg(
     prefetch_buffers.chip_select(read_port_idx) && read_ready,

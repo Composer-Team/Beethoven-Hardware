@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import beethoven.MemoryStreams.{HasMemoryInterface, MemoryIOBundle}
 import beethoven.common.ShiftReg
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 
 private class SRMMHelper(
     nReadPorts: Int,

@@ -5,9 +5,9 @@ import beethoven.Protocol.RoCC.{RoccBuffer, RoccFanout, RoccIdentityNode}
 import beethoven.Protocol.tilelink.TLSupportChecker
 import beethoven._
 import beethoven.common.Misc
-import chipsalliance.rocketchip.config.Parameters
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
-import freechips.rocketchip.tilelink.TLNode
+import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy.{LazyModule, LazyModuleImp}
+import org.chipsalliance.diplomacy.tilelink.TLNode
 
 class Subdevice(val deviceId: Int)(implicit p: Parameters) extends LazyModule {
   override lazy val desiredName: String = f"Subdevice${deviceId}"

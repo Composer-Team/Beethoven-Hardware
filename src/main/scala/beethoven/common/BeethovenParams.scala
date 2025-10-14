@@ -1,13 +1,7 @@
 package beethoven
 
 import beethoven.Platforms._
-import chipsalliance.rocketchip.config._
-import freechips.rocketchip.devices.debug._
-import freechips.rocketchip.devices.tilelink._
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.rocket.PgLevels
-import freechips.rocketchip.subsystem._
-import freechips.rocketchip.tile._
+import org.chipsalliance.cde.config._
 import beethoven.Platforms.FPGA.Xilinx.FPGAResources
 import firrtl.options.PhaseManager
 import firrtl.options.Dependency
@@ -55,9 +49,7 @@ trait ModuleConstructor {
         Dependency[chisel3.stage.phases.Elaborate],
         Dependency[chisel3.stage.phases.AddImplicitOutputFile],
         Dependency[chisel3.stage.phases.AddImplicitOutputAnnotationFile],
-        Dependency[chisel3.stage.phases.MaybeAspectPhase],
-        Dependency[chisel3.stage.phases.Convert],
-        Dependency[firrtl.stage.phases.Compiler]
+        Dependency[chisel3.stage.phases.Convert]
       )
     )
 
@@ -65,8 +57,8 @@ trait ModuleConstructor {
       .transform(
         Seq(
           ChiselGeneratorAnnotation(constructor),
-          RunFirrtlTransformAnnotation(new VerilogEmitter),
-          new TargetDirAnnotation(synthesis_test_directory.toString())
+          // RunFirrtlTransformAnnotation(new VerilogEmitter),
+          // new TargetDirAnnotation(synthesis_test_directory.toString())
         )
       )
       .collectFirst { case EmittedVerilogCircuitAnnotation(a) =>
@@ -75,7 +67,7 @@ trait ModuleConstructor {
       .get
       .value
 
-    ChiselStage.emitVerilog(constructor())
+    // ChiselStage.emitVerilog(constructor())
     // generate a synthesis script for this particular module in `synthesis_test_directory`
     // use vivado_2024 to synthesize for this board part: xck26-sfvc784-2LV-c
     //    NOTE: SEE KRIA BUILD SCRIPTS in src/main/scala/beethoven/Platforms/FPGA/Xilinx/KriaPlatform.scala
@@ -116,50 +108,11 @@ class WithBeethoven(
       case BQuiet             => quiet
       case PlatformKey        => platform
       case AcceleratorSystems => Seq()
-      case PgLevels           => 5
-      case XLen               => 64 // Applies to all cores
       // PrefetchSourceMultiplicity must comply with the maximum number of beats
       // allowed by the underlying protocl. For AXI4, this is 256
       case CmdRespBusWidthBytes     => 4
       case UseConfigAsOutputNameKey => useConfigAsOutputName
-      case MaxHartIdBits            => 1
       // Interconnect parameters
-      case SystemBusKey =>
-        SystemBusParams(
-          beatBytes = site(XLen) / 8,
-          blockBytes = site(CacheBlockBytes)
-        )
-      case ControlBusKey => // noinspection DuplicatedCode
-        PeripheryBusParams(
-          beatBytes = site(XLen) / 8,
-          blockBytes = site(CacheBlockBytes),
-          errorDevice = Some(
-            BuiltInErrorDeviceParams(
-              errorParams = DevNullParams(
-                List(AddressSet(0x3000, 0xfff)),
-                maxAtomic = site(XLen) / 8,
-                maxTransfer = 4096
-              )
-            )
-          )
-        )
-      case PeripheryBusKey =>
-        PeripheryBusParams(
-          beatBytes = site(XLen) / 8,
-          blockBytes = site(CacheBlockBytes),
-          dtsFrequency = Some(100000000)
-        ) // Default to 100 MHz pbus clock
-      case MemoryBusKey =>
-        MemoryBusParams(
-          beatBytes = site(XLen) / 8,
-          blockBytes = site(CacheBlockBytes)
-        )
-      case FrontBusKey =>
-        FrontBusParams(
-          beatBytes = site(XLen) / 8,
-          blockBytes = site(CacheBlockBytes)
-        )
-
       // implementation hints
       case ConstraintHintsKey =>
         List(
@@ -168,19 +121,6 @@ class WithBeethoven(
         )
 
       // Additional device Parameters
-      case BootROMLocated(InSubsystem) =>
-        Some(BootROMParams(contentFileName = "./bootrom/bootrom.img"))
-      case SubsystemExternalResetVectorKey => false
-      case DebugModuleKey => Some(DefaultDebugModuleParams(site(XLen)))
-      case CLINTKey       => Some(CLINTParams())
-      case PLICKey        => Some(PLICParams())
-      // Copying WithJustOneBus
-      case TLNetworkTopologyLocated(InSubsystem) =>
-        List(
-          JustOneBusTopologyParams(sbus = site(SystemBusKey))
-        )
-      case MonitorsEnabled            => false
-      case TileKey                    => RocketTileParams()
       case MaxInFlightMemTxsPerSource => 1
       case DRAMBankBytes              => 4 * 1024
     })

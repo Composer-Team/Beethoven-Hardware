@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import beethoven.MemoryStreams._
 import beethoven.common.ShiftReg
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 
 class RegMem(nRows: Int, nColumns: Int, nPorts: Int, latency: Int)(implicit
     p: Parameters

@@ -11,11 +11,12 @@ import beethoven.Protocol.RoCC.{
   RoccIdentityNode,
   RoccNode
 }
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util.{Cat, log2Up}
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.tilelink.{TLBuffer, TLNode, TLXbar}
+import org.chipsalliance.diplomacy._
+import org.chipsalliance.diplomacy.tilelink.{TLBuffer, TLNode, TLXbar}
+import org.chipsalliance.diplomacy.nodes._
 
 import scala.annotation.tailrec
 

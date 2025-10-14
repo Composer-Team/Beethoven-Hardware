@@ -5,12 +5,13 @@ import beethoven.Generation.CppGeneration
 import chisel3._
 import chisel3.util._
 import beethoven._
-import freechips.rocketchip.amba.axi4._
-import chipsalliance.rocketchip.config._
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.tilelink.TLIdentityNode
+import org.chipsalliance.diplomacy.amba.axi4._
+import org.chipsalliance.cde.config._
+import org.chipsalliance.diplomacy._
+import org.chipsalliance.diplomacy.tilelink.TLIdentityNode
 
 import java.io.FileWriter
+import chisel3.reflect.DataMirror
 
 /*
  * This file seems to handle memory-mapped IO
@@ -57,10 +58,9 @@ abstract class WidgetModule(outer: Widget) extends LazyModuleImp(outer) {
   //   For outputs, direct binds the wire to the map
   def attachIO(io: Record, prefix: String = ""): Unit = {
     // this might not work....
-    import Chisel._
     def innerAttachIO(node: Data, name: String): Unit = node match {
       case b: Bits =>
-        if (b.dir == OUTPUT) {
+        if (DataMirror.directionOf(b) == ActualDirection.Output) {
           attach(b, s"$name", ReadOnly)
         } else {
           genWOReg(b, name)

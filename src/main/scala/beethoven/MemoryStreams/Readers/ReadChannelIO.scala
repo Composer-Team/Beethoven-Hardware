@@ -2,7 +2,7 @@ package beethoven.MemoryStreams.Readers
 
 import beethoven.ChannelTransactionBundle
 import beethoven.DataChannelIO
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3.util.Decoupled
 import chisel3.{Bundle, Flipped}
 

@@ -1,10 +1,9 @@
 package beethoven.Protocol
 
-import freechips.rocketchip.amba.axi4.AXI4BundleParameters
+import org.chipsalliance.diplomacy.amba.axi4.AXI4BundleParameters
 import chisel3._
 import beethoven.Protocol.ACE._
 import beethoven.Protocol.AXI.AXI4Compat
-import freechips.rocketchip.subsystem.MasterPortParams
 
 object ACE {
   val snoopWidth = 4

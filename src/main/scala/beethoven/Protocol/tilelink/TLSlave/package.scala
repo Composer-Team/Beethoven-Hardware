@@ -1,12 +1,13 @@
 package beethoven.Protocol.tilelink
 
-import chipsalliance.rocketchip.config
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
-import chisel3.internal.sourceinfo.SourceInfo
+import chisel3.experimental.SourceInfo
 import chisel3.util._
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.tilelink._
+import org.chipsalliance.diplomacy._
+import org.chipsalliance.diplomacy.tilelink._
+import org.chipsalliance.diplomacy.nodes._
 
 package object TLSlave {
   case class TLSlaveOnlyBundle(TLBundleParameters: TLBundleParameters)

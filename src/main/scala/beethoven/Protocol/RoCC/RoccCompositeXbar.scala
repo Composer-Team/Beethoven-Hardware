@@ -3,8 +3,8 @@ package beethoven.Protocol.RoCC
 import beethoven.Floorplanning.LazyModuleWithSLRs
 import beethoven.Floorplanning.LazyModuleWithSLRs.LazyModuleWithFloorplan
 import beethoven.Protocol.RoCC.RoccCompositeXbar.named_idx
-import chipsalliance.rocketchip.config.Parameters
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
+import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy.{LazyModule, LazyModuleImp}
 
 class RoccCompositeXbar(implicit p: Parameters) extends LazyModule {
   LazyModuleWithSLRs.freezeSLRPush = true

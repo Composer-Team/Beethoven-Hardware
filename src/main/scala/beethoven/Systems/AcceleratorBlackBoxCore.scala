@@ -2,7 +2,7 @@ package beethoven
 
 import beethoven._
 import beethoven.common._
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import beethoven.AcceleratorBlackBoxCore._
@@ -70,7 +70,7 @@ object AcceleratorBlackBoxCore {
     }
 
     m.filter { a =>
-      println(a)
+      // println(a)
       !a.name.contains("__")
     }.map { a =>
       if (a.sources.length == 1) {
@@ -149,7 +149,7 @@ object AcceleratorBlackBoxCore {
           t + "_" + s.split("\\.").takeRight(structureDepth).mkString("_")
       }
     }
-    println(a)
+    // println(a)
     a match {
       // case _: EmptyAccelResponse =>
         // Seq()

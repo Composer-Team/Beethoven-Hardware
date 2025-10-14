@@ -2,7 +2,7 @@ package beethoven.common
 
 import beethoven.common.Address.addrBits
 import beethoven.platform
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util.log2Up
 

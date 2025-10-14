@@ -1,6 +1,6 @@
 package beethoven.MemoryStreams.Loaders
 
-import chipsalliance.rocketchip.config._
+import org.chipsalliance.cde.config._
 import chisel3._
 import chisel3.util._
 
@@ -57,7 +57,7 @@ class ScratchpadPackedSubwordLoader(
         when(io.sp_write_out.fire) {
           datCounter.inc()
           idxBase := idxBase + 1.U
-          println("dats per subword " + datsPerSubword)
+          // println("dats per subword " + datsPerSubword)
           when(datCounter.value === (datsPerSubword - 1).U) {
             subwordCounter.inc()
             lenRemainingFromReq := lenRemainingFromReq - (wordSizeBits / 8).U

@@ -2,11 +2,11 @@ package beethoven.Protocol.RoCC
 
 import beethoven.Generation._
 import beethoven._
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3.util._
 import chisel3._
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.tilelink.TLMessages
+import org.chipsalliance.diplomacy._
+import org.chipsalliance.diplomacy.tilelink.TLMessages
 
 class TLToRocc(implicit p: Parameters) extends LazyModule {
   val node = TLToRoccNode()

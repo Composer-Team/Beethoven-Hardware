@@ -1,17 +1,23 @@
 package beethoven.Generation.vcs
 
 import beethoven.{BeethovenBuild, platform}
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 
 /** Thank you to ChiselTest for inspiring this code.
   */
 
 object HarnessGenerator {
   def generateHarness()(implicit p: Parameters): Unit = {
-    val r = os.read(BeethovenBuild.hw_build_dir / "BeethovenTop.v").split("\n")
+    val r = os.read(BeethovenBuild.hw_build_dir / "BeethovenTop.sv").split("\n")
 
-    def sanitize(q: String): Seq[String] =
-      q.trim.split(" +").map(a => a.replace(",", "").trim)
+    def sanitize(q: String): Seq[String] = {
+      val r =
+        if (q.contains("//"))
+          q.substring(0, q.indexOf("//"))
+        else q
+
+      r.replace(",", "").trim.split("[\t ]+")
+    }
 
     def is_reserved(q: Seq[String]): Boolean = {
       val r = q.last
@@ -22,11 +28,13 @@ object HarnessGenerator {
       r.filter(_.contains("input ")).map(sanitize).filter(!is_reserved(_))
     val outputs =
       r.filter(_.contains("output ")).map(sanitize).filter(!is_reserved(_))
+
     val is_reset_active_high = platform.isActiveHighReset
     val reset_active = if (is_reset_active_high) 1 else 0
     val reset_inactive = reset_active ^ 1
     val reset_name = if (is_reset_active_high) "reset" else "RESETn"
     val ns_per_half_period = 1000.0 / platform.clockRateMHz
+    val zero_width_neles = 2
     val w =
       """`timescale 1ns/1ps
         |
@@ -35,10 +43,9 @@ object HarnessGenerator {
         inputs
           .map { i =>
             val widthMO =
-              if (i.length == 2) 0
+              if (i.length == zero_width_neles) 0
               else {
                 val ss = i(1)
-                //            println(i)
                 ss.substring(1, ss.indexOf(":"))
               }
             f"  reg [$widthMO:0] ${i.last};\n"
@@ -47,7 +54,7 @@ object HarnessGenerator {
         outputs
           .map { i =>
             val widthMO =
-              if (i.length == 2) 0
+              if (i.length == zero_width_neles) 0
               else {
                 val ss = i(1)
                 ss.substring(1, ss.indexOf(":"))

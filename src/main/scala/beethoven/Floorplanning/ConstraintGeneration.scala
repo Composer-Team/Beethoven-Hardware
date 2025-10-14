@@ -1,7 +1,7 @@
 package beethoven.Floorplanning
 
 import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF1Platform
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import beethoven.Platforms._
 import beethoven._
 

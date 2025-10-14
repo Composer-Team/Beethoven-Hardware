@@ -1,16 +1,15 @@
 package beethoven.MemoryStreams
 
 import beethoven._
-import chipsalliance.rocketchip.config._
+import org.chipsalliance.cde.config._
 import chisel3._
 import chisel3.util._
 import beethoven.common.ShiftReg
 import beethoven.Protocol.tilelink.TLSlave.TLSlaveManagerNode
 import beethoven.Systems.getCommMemAddressSet
 import beethoven.platform
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.subsystem._
-import freechips.rocketchip.tilelink._
+import org.chipsalliance.diplomacy._
+import org.chipsalliance.diplomacy.tilelink._
 
 class MemWritePort(
     addrBits: Int,
@@ -59,7 +58,6 @@ class IntraCoreScratchpad(
     this
   )
   val channelWidthBytes = platform.extMem.master.beatBytes
-  val blockBytes = p(CacheBlockBytes)
   val node = TLSlaveManagerNode(
     TLSlavePortParameters.v1(
       managers = Seq(

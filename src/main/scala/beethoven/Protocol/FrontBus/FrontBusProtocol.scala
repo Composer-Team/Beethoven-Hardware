@@ -1,10 +1,10 @@
 package beethoven.Protocol.FrontBus
 
 import beethoven.Protocol.RoCC.{RoccClientNode, RoccIdentityNode, RoccNode}
-import chipsalliance.rocketchip.config.{Config, Field, Parameters}
+import org.chipsalliance.cde.config.{Config, Field, Parameters}
 import chisel3._
-import freechips.rocketchip.amba.axi4.{AXI4Node, AXI4SlaveNode}
-import freechips.rocketchip.tilelink.{TLIdentityNode, TLNode}
+import org.chipsalliance.diplomacy.amba.axi4.{AXI4Node, AXI4SlaveNode}
+import org.chipsalliance.diplomacy.tilelink.{TLIdentityNode, TLNode}
 
 abstract class FrontBusProtocol {
 
