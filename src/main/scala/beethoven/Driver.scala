@@ -23,6 +23,7 @@ import chisel3.stage.phases.Elaborate
 import chisel3.stage.phases.Convert
 import firrtl.AnnotationSeq
 import circt.stage.SplitVerilog
+import chisel3.emitVerilog
 
 class BeethovenChipStage extends ChiselStage {
   // override val shell = new Shell("beethoven-compile")
@@ -242,7 +243,16 @@ class BeethovenBuild(
         Some("S00_AXI")
       }
 
-      val tcs = ((Seq(tc_front) ++ tc_axi) filter (_.isDefined) map (_.get))
+      val dma_annot = if (platform.isInstanceOf[PlatformHasDMA]) {
+        beethoven.Generation.Annotators.AnnotateXilinxInterface(
+          "dma",
+          (hw_build_dir / "BeethovenTop.sv").toString(),
+          XilinxInterface.AXI4
+        )
+        Some("dma")
+      } else None
+  
+      val tcs = ((Seq(tc_front) ++ tc_axi ++ Seq(dma_annot)) filter (_.isDefined) map (_.get))
         .mkString(":")
       Annotators.AnnotateTopClock(
         f"\\(\\* X_INTERFACE_PARAMETER = \"ASSOCIATED_BUSIF $tcs \" \\*\\)",

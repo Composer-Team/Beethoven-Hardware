@@ -25,6 +25,6 @@ object MyAcceleratorKriaClocks extends BeethovenBuild(new MyAcceleratorConfig,
   buildMode = BuildMode.Synthesis,
   platform = new Kria2Platform())
 
-object MyAcceleratorF2 extends BeethovenBuild(new MyAcceleratorConfig(5),
+object MyAcceleratorF2 extends BeethovenBuild(new MyAcceleratorConfig(1),
   buildMode = BuildMode.Synthesis,
   platform = new AWSF2Platform())

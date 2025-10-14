@@ -10,6 +10,16 @@ object AnnotateXilinxInterface {
     val ACE, AXI4, AHB = Value
     type XilinxInterface = Value
   }
+  private def perform_sed(cmd: Seq[String], fname: String): Unit = {
+    val sedCmd = Seq("sed") ++ get_sed_inline_opt() ++ Seq(
+      "-E",
+      "-z",
+      cmd.mkString(";"),
+      fname
+    )
+    os.proc(sedCmd).call()
+  }
+
   def apply(prefix: String, fname: String, interface: XilinxInterface): Unit = {
     val interfaceName = interface match {
       case XilinxInterface.ACE  => "xilinx.com:interface:acemm_rtl:1.0"
@@ -17,20 +27,34 @@ object AnnotateXilinxInterface {
       case XilinxInterface.AHB  => "xilinx.com:interface:ahblite_rtl:1.0"
     }
     val busName = prefix.toUpperCase()
-    // wtf?
-    val sedCmds = Seq("input", "output").map { d: String =>
-      s"s/( *)$d (.*) ${prefix}_([^,]*)(,)?/\\1\\(\\* X_INTERFACE_INFO = \"$interfaceName $busName \\3\" \\*\\)\\n" +
-        s"\\1$d \\2 ${prefix}_\\3\\4/"
-    }
+    val width_info = "\\[[0-9]*:[0-9]*\\]"
+    val copy_directionality_info_cmd =
+      s"s/ *(input|output) *($width_info) *($prefix)([a-zA-Z_0-9]+),\\s*\\/\\/[ @\\[a-zA-Z\\/\\.:0-9\\-]*\\]\\n *$prefix/" +
+        s"  \\1 \\2 \\3\\4,\\n  \\1 \\2 $prefix/g"
+    val copy_directionality_info_cmd_1wide =
+      s"s/ *(input|output) *($prefix)([a-zA-Z_0-9]+),\\s*\\/\\/[ @\\[a-zA-Z\\/\\.:0-9\\-]*\\]\\n *$prefix/" +
+        s"  \\1 \\2\\3,\\n  \\1 $prefix/g"
+
+    val ensure_clock_input = "s/\\n *clock/\\n  input clock/"
+    val ensure_reset_input =
+      Seq("s/\\n *RESETn/\\n  input RESETn/", "s/\\n *reset/\\n  input reset/")
+    val add_annotation_cmd =
+      s"s/\\n( *)(input|output) *($width_info) *${prefix}_([a-zA-Z_]*),/" +
+        s"\\n  (\\* X_INTERFACE_INFO = \"$interfaceName $busName \\4\" \\*\\)\\0/g"
+    val add_annotation_cmd_1wide =
+      s"s/\\n( *)(input|output) *${prefix}_([a-zA-Z_]*),/" +
+        s"\\n  (\\* X_INTERFACE_INFO = \"$interfaceName $busName \\3\" \\*\\)\\0/g"
+
+    // println(add_annotation_cmd)
+    /*
+s/ *(input|output)(.*)(M00_AXI)(.*),.*\n *(M00_AXI)/  \1\2\3\4,\n  \1\2\5/
+s/ *(input|output)(.*)(S00_AXI)(.*),\n *(S00_AXI)/  \1\2\3\4,\n  \1\2\5/
+s/ *(input|output)(.*)(dma)(.*),\n *(dma)/  \1\2\3\4,\n  \1\2\5/ */
 //     then, remove the repeated modules from the source
 //     join sedCMds with ;
-    val sedCmd = Seq("sed") ++ get_sed_inline_opt() ++ Seq(
-      "-E",
-      sedCmds.mkString(";"),
-      fname
-    )
-
-    os.proc(sedCmd).call()
+    perform_sed(Seq(copy_directionality_info_cmd, copy_directionality_info_cmd_1wide), fname)
+    perform_sed(ensure_reset_input ++ Seq(ensure_clock_input), fname)
+    perform_sed(Seq(add_annotation_cmd, add_annotation_cmd_1wide), fname)
     (os.pwd / "tmp.v").toString()
   }
 
