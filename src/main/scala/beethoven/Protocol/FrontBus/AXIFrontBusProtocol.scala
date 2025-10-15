@@ -16,7 +16,7 @@ import beethoven.platform
 import org.chipsalliance.diplomacy.amba.axi4._
 import org.chipsalliance.diplomacy._
 import org.chipsalliance.diplomacy.tilelink.{TLBuffer, TLIdentityNode}
-import beethoven.Protocol.AXI.AXILToTL
+import beethoven.Protocol.AXI.AXILDMAEngine._
 import beethoven.Protocol.MasterPortParams
 import org.chipsalliance.diplomacy.resources.MemoryDevice
 
@@ -161,17 +161,20 @@ class AXIFrontBusProtocol(nClocks: Int = 1) extends FrontBusProtocol {
         )
         val dma2tl = TLIdentityNode()
         val converter = if (dmaPlatform.DMAisLite) {
-          LazyModuleWithFloorplan(new AXILToTL(dmaPlatform.DMABusWidthBytes)).node
+          val short = LazyModuleWithFloorplan(new AXILToTL(dmaPlatform.DMABusWidthBytes)).node
+          short := node
+          short
         } else {
-          LazyModuleWithFloorplan(new LongAXI4ToTL(64)).node
+          val long = LazyModuleWithFloorplan(new LongAXI4ToTL(64)).node
+          long := AXI4UserYanker(capMaxFlight = Some(1)) :=
+            AXI4IdIndexer(1) :=
+            AXI4Buffer() := node
+          long
         }
         DeviceContext.withDevice(frontInterfaceID) {
           dma2tl :=
             make_tl_buffer() :=
-            converter :=
-            AXI4UserYanker(capMaxFlight = Some(1)) :=
-            AXI4IdIndexer(1) :=
-            AXI4Buffer() := node
+            converter
         }
         (Some(node), Some(dma2tl))
       } else (None, None)

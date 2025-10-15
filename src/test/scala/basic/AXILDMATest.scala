@@ -7,7 +7,7 @@ import chisel3._
 import beethoven.Platforms.PlatformHasDMA
 
 object KriaAXILDMATester extends BeethovenBuild(new MyAcceleratorConfig(1),
-  buildMode = BuildMode.Synthesis,
+  buildMode = BuildMode.Simulation,
   platform = new KriaPlatform() with PlatformHasDMA {
     override val DMABusWidthBytes: Int = 4
     override val DMAIDBits: Int = 0
