@@ -11,9 +11,8 @@ object AnnotateXilinxInterface {
     type XilinxInterface = Value
   }
   private def perform_sed(cmd: Seq[String], fname: String): Unit = {
-    val sedCmd = Seq("sed") ++ get_sed_inline_opt() ++ Seq(
+    val sedCmd = Seq("sed") ++ get_sed_inline_opt() ++ get_sed_z_opt() ++ Seq(
       "-E",
-      "-z",
       cmd.mkString(";"),
       fname
     )

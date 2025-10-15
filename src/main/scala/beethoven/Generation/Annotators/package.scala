@@ -18,4 +18,12 @@ package object Annotators {
       case _ => throw new Exception("Couldn't figure out OS for " + get_os())
     }
   }
+
+  private[Annotators] def get_sed_z_opt(): Seq[String] = {
+    get_os() match {
+      case "Darwin" => Seq()
+      case "Linux"  => Seq("-z")
+      case _ => throw new Exception("Couldn't figure out OS for " + get_os())
+    }
+  }
 }
