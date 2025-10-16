@@ -114,7 +114,7 @@ class AXILToTL(wAXI: Int)(implicit
     arbiter.io.in(0) <> reader.tl.a
     arbiter.io.in(1) <> writer.tl.a
 
-    val response_is_read = tl.d.bits.opcode === TLMessages.Get
+    val response_is_read = tl.d.bits.source === 0.U
     writer.tl.d.bits := tl.d.bits
     writer.tl.d.valid := tl.d.valid && !response_is_read
     reader.tl.d.bits := tl.d.bits

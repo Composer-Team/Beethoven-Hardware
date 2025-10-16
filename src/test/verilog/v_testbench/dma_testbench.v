@@ -1,7 +1,5 @@
 `timescale 1ns/1ps
-// this should be copied over the BeethovenTopVCSHarness inside the $BEETHOVEN_PATH/build/hw
-// directory to usurp the normal Beethoven harness. This is not for common use and only
-// for verifying the DMA engine.
+
 module BeethovenTopVCSHarness;
 reg [15:0] S00_AXI_awid;
 reg [39:0] S00_AXI_awaddr;
@@ -260,6 +258,20 @@ end
 always @(clock) begin
   $dumpflush;
 end
+task init_everything_low;
+  begin
+    M00_AXI_arready = 0;
+    M00_AXI_awready = 0;
+    M00_AXI_wready = 0;
+    M00_AXI_rvalid = 0;
+    M00_AXI_bvalid = 0;
+    dma_awvalid = 0;
+    dma_arvalid = 0;
+    dma_wvalid = 0;
+    dma_rready = 0;
+    dma_bready = 0;
+  end
+endtask
 
 task enqueue_write;
   input [31:0] addr;
@@ -361,14 +373,18 @@ endtask
 task enqueue_read;
   input [31:0] addr;
   begin
+    #1
+    clock = 0;
+    #1
+    clock = 1;
     dma_arvalid = 0;
     dma_rready = 0;
     for (i=0;i<100;i=i+1) begin
       #1
-      clock = ~clock;
+      clock = 0;
+      #1
+      clock = 1;
     end
-    #1
-    clock = 1;
     dma_arvalid = 1;
     dma_araddr = addr;
     dma_rready = 0;
@@ -389,7 +405,9 @@ task enqueue_read;
 endtask
 
 task process_read;
+  output [15:0] id;
   begin
+    reg [15:0] id_reg;
     #1
     clock = 0;
     #1
@@ -401,15 +419,17 @@ task process_read;
       #1
       clock = 1;
     end
-    M00_AXI_arready = 0;
+    id = M00_AXI_arid;
     #1
     clock = 0;
+    M00_AXI_arready = 0;
     #1
     clock = 1;
   end
 endtask
 task sink_read;
   input [127:0] data;
+  input [15:0] id;
   begin
     #1
     clock = 0;
@@ -417,7 +437,14 @@ task sink_read;
     clock = 1;
     M00_AXI_rvalid = 1;
     M00_AXI_rdata = data;
-    M00_AXI_rid = 16;
+    M00_AXI_rid = id;
+    while(!M00_AXI_rready) begin
+      #1
+      clock = 0;
+      #1
+      clock = 1;
+    end
+    $display("submitted read");
     #1
     clock = 0;
     #1
@@ -431,6 +458,10 @@ task sink_read;
       clock = 1;
     end
     $display("Got read: %x", dma_rdata);
+    #1
+    clock = 0;
+    #1
+    clock = 1;
     dma_rready = 0;
   end
 endtask
@@ -438,9 +469,10 @@ endtask
 task read;
   input [31:0] addr;
   begin
+    reg [15:0] id;
     enqueue_read(addr);
-    process_read();
-    sink_read(128'hAAAABBBBCCCCDDDD0000111122223333);
+    process_read(id);
+    sink_read(128'hAAAABBBBCCCCDDDD0000111122223333, id);
   end
 endtask
 
@@ -472,6 +504,7 @@ integer k;
 initial begin:a1
   // reset logic BEGIN
   RESETn = 0;
+  init_everything_low();
   for (i=0;i<100;i=i+1) begin
     # 1.0;
     clock = ~clock;
@@ -499,6 +532,12 @@ initial begin:a1
     clock = ~clock;
   end
   query_credits();
+  $display("Should expect 63 credits above");
+
+  read(16'h20); 
+  read(16'h24); 
+  read(16'h28); 
+  read(16'h2c); 
 end
 
 endmodule
