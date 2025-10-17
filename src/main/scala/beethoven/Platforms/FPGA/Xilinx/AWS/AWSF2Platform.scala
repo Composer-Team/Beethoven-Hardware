@@ -38,8 +38,8 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
   override val hasDiscreteMemory: Boolean = true
 
   override val frontBusBaseAddress: Long = 0
-  override val frontBusAddressNBits: Int = 16
-  override val frontBusAddressMask: Long = 0xffff
+  override val frontBusAddressNBits: Int = 32
+  override val frontBusAddressMask: Long = 0xffffL
   override val frontBusBeatBytes: Int = 4
   override val frontBusProtocol: FrontBusProtocol = new AXIFrontBusProtocol
 
@@ -54,9 +54,15 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
 
   override val isActiveHighReset: Boolean = false
 
-  override val DMAIDBits: Int = 0
-  override val DMABusWidthBytes: Int = 4
-  override val DMAisLite: Boolean = true
+  override val DMAIDBits: Int = 16
+  override val DMABusWidthBytes: Int = 64
+  override val DMAisLite: Boolean = false
+
+  // SDA
+  // override val DMAIDBits: Int = 0
+  // override val DMABusWidthBytes: Int = 4
+  // override val DMAisLite: Boolean = true
+
   override val clockRateMHz: Int = 250
 
   override val defaultReadTXConcurrency = 8
@@ -74,7 +80,7 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
       os.proc("touch", top_file.toString()).call()
       Shell.write(
         BeethovenBuild.hw_build_dir / "cl_beethoven_top.sv",
-        withDMA = Shell.DMAType.ViaSDA
+        withDMA = Shell.DMAType.ViaDMA
       )(c)
       Shell.write_header(
         BeethovenBuild.hw_build_dir / "cl_beethoven_top_defines.vh"

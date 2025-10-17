@@ -120,13 +120,6 @@ class VecAddConfig
       )
     )
 
-object VectorAddConfig
-    extends BeethovenBuild(
-      new VecAddConfig,
-      buildMode = BuildMode.Simulation,
-      platform = new AWSF2Platform()
-    )
-
 
 class VecVerilogCmd extends AccelCommand("vector_add") {
   val vec_a_addr = UInt(32.W)

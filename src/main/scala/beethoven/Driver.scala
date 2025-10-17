@@ -180,7 +180,9 @@ class BeethovenBuild(
         ChiselGeneratorAnnotation(() => LazyModule(new BeethovenTop()(configWithBuildMode)).module),
         FirtoolOption("--disable-all-randomization"),
         FirtoolOption(
-          "--lowering-options=locationInfoStyle=wrapInAtSquareBracket,mitigateVivadoArrayIndexConstPropBug,locationInfoStyle=wrapInAtSquareBracket,disallowLocalVariables"
+          "--lowering-options=locationInfoStyle=wrapInAtSquareBracket," +
+          "mitigateVivadoArrayIndexConstPropBug,locationInfoStyle=wrapInAtSquareBracket," +
+          "disallowLocalVariables"
         )
       )
     )

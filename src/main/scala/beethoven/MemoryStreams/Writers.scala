@@ -13,8 +13,7 @@ class WriterDataChannelIO(val dWidth: Int) extends Bundle {
   val isFlushed = Output(Bool())
 }
 
-class SequentialWriteChannelIO(maxBytes: Int)(implicit p: Parameters)
-    extends Bundle {
+class SequentialWriteChannelIO(maxBytes: Int)(implicit p: Parameters) extends Bundle {
   val req = Flipped(Decoupled(new ChannelTransactionBundle))
   val channel = new WriterDataChannelIO(maxBytes * 8)
   val busy = Output(Bool())
@@ -33,10 +32,6 @@ class SequentialWriter(
 )(implicit p: Parameters)
     extends Module {
   override val desiredName = s"SequentialWriter_w${userBytes * 8}"
-  require(
-    isPow2(userBytes),
-    "Writer must have a data channel with that is a power-of-2 number of bytes wide."
-  )
   private val fabricBeatBytes = tl_outer.params.dataBits / 8
   private val addressBits = tl_outer.params.addressBits
   private val addressBitsChop = addressBits - log2Up(fabricBeatBytes)
@@ -49,6 +44,21 @@ class SequentialWriter(
       "sources per Writer. It must be a power-of-two and greater than 1."
   )
 
+  require(
+    isPow2(userBytes),
+    "Writer must have a data channel with that is a power-of-2 number of bytes wide."
+  )
+  val memory_latency = 3
+  require(
+    platform.prefetchSourceMultiplicity >= memory_latency,
+    """
+        |If the valid signal is high, there is _at least_ one thing in the burst queue. For burst storage
+        |occupancy = bso and memory latency = ml and bso >= ml, we know that bso can be greater than the real
+        |occupancy of the queue. However, if bso >= burst length, then within ml cycles, there will have been
+        |at least bso elements within the queue, guaranteed by bso >= ml.
+        |""".stripMargin
+  )
+
   val io = IO(new SequentialWriteChannelIO(userBytes))
   val tl_out = IO(new TLBundle(tl_outer.params))
   val idle = RegInit(true.B)
@@ -56,7 +66,6 @@ class SequentialWriter(
   io.req.ready := idle
   io.channel.data.ready := false.B
   tl_out.a.valid := false.B
-  tl_out.a.bits := DontCare
 
   val q_size =
     Math.max(minSizeBytes.getOrElse(0) / fabricBeatBytes, pfsm * nSources)
@@ -65,19 +74,17 @@ class SequentialWriter(
     new Queue(
       UInt(tl_outer.params.dataBits.W),
       platform.prefetchSourceMultiplicity,
-      pipe = true,
-      useSyncReadMem =
-        true // hopefully this gives us BRAM in FPGA. Worry about ASIC later ugh
+      hasFlush = true,
+      pipe = true
     )
   ).io
+  burst_storage_io.flush.get := io.req.fire
 
   // logical operation "a -> b"
   def implies(a: Bool, b: Bool): Bool = (a && b) || !a
 
   val localMaskBits = tl_outer.params.dataBits / 8
-  val memory_latency = 3
   val write_buffer_payload = Wire(UInt(tl_outer.params.dataBits.W))
-  write_buffer_payload := DontCare
 
   val write_buffer =
     Memory(memory_latency, tl_outer.params.dataBits, q_size, 1, 1, 0)
@@ -109,9 +116,11 @@ class SequentialWriter(
     val q = Module(
       new Queue[UInt](
         UInt((fabricBeatBytes / userBytes).W),
-        q_size + platform.prefetchSourceMultiplicity + 1
+        q_size + platform.prefetchSourceMultiplicity + 1,
+        hasFlush = true
       )
     )
+    q.io.flush.get := io.req.fire
 //    println(s"mask buffer is sz ${q.entries}")
     q.io.enq.valid := enable_buffer_write
     q.io.enq.bits := 0.U
@@ -203,7 +212,9 @@ class SequentialWriter(
     }
   }.otherwise {
     when(
-      expectedNumBeats === 0.U && write_buffer_occupancy === 0.U && burst_storage_occupancy === 0.U
+      expectedNumBeats === 0.U &&
+        write_buffer_occupancy === 0.U &&
+        burst_storage_occupancy === 0.U
     ) {
       idle := true.B
     }
@@ -217,15 +228,15 @@ class SequentialWriter(
                            Misc.maskDemux(q.io.deq.bits, userBytes)
                          } else BigInt("1" * fabricBeatBytes, radix = 2).U)
   tl_out.a.bits.opcode := TLMessages.PutFullData
+  tl_out.a.bits.data := burst_storage_io.deq.bits
+  tl_out.a.bits.param := DontCare
+  tl_out.a.bits.corrupt := false.B
 
   when(burst_inProgress) {
-    tl_out.a.valid := true.B
-    assert(burst_storage_io.deq.valid)
+    tl_out.a.valid := burst_storage_io.deq.valid
     tl_out.a.bits.address := addrInProgress
-    tl_out.a.bits.size := log2Up(
-      platform.prefetchSourceMultiplicity * fabricBeatBytes
-    ).U
-    tl_out.a.bits.data := burst_storage_io.deq.bits
+    tl_out.a.bits.source := sourceInProgress
+    tl_out.a.bits.size := log2Up(platform.prefetchSourceMultiplicity * fabricBeatBytes).U
     when(tl_out.a.fire) {
       burst_progress_count := burst_progress_count + 1.U
       when(burst_progress_count === (pfsm - 1).U) {
@@ -237,18 +248,8 @@ class SequentialWriter(
     val isSmall = expectedNumBeats < userBeatsPerLargeTx.U
     val burstSize = Mux(isSmall, 1.U, pfsm.U)
     tl_out.a.valid := hasAvailableSource && burst_storage_occupancy >= burstSize && burst_storage_io.deq.valid
-    require(
-      platform.prefetchSourceMultiplicity >= memory_latency,
-      """
-        |If the valid signal is high, there is _at least_ one thing in the burst queue. For burst storage
-        |occupancy = bso and memory latency = ml and bso >= ml, we know that bso can be greater than the real
-        |occupancy of the queue. However, if bso >= burst length, then within ml cycles, there will have been
-        |at least bso elements within the queue, guaranteed by bso >= ml.
-        |""".stripMargin
-    )
     val nextAddr = Cat(req_addr, 0.U(log2Up(fabricBeatBytes).W))
 
-    tl_out.a.bits.data := burst_storage_io.deq.bits
     tl_out.a.bits.size := Mux(
       isSmall,
       log2Up(fabricBeatBytes).U,
@@ -277,48 +278,56 @@ class SequentialWriter(
     }
   } else if (userBytes < fabricBeatBytes) {
     val beatLim = fabricBeatBytes / userBytes
+
     val beatBuffer = Reg(Vec(beatLim - 1, UInt((userBytes * 8).W)))
+    val maskAcc = Reg(Vec(beatLim - 1, Bool()))
     val beatCounter = Reg(UInt(log2Up(beatLim).W))
+
+    val beatBuffer_concat = Wire(Vec(beatLim, UInt((userBytes * 8).W)))
+    val maskAcc_concat = Wire(Vec(beatLim, Bool()))
+    (0 to beatLim - 2) foreach { t =>
+      beatBuffer_concat(t) := beatBuffer(t)
+      maskAcc_concat(t) := maskAcc(t)
+    }
+    beatBuffer_concat.last := 0xDEADBEEFL.U
+    maskAcc_concat.last := false.B
+    write_buffer_payload := Cat(beatBuffer_concat.reverse)
+    mask_buffer.get.io.enq.bits := Cat(maskAcc_concat.reverse)
+
     io.channel.data.ready := write_buffer_occupancy < q_size.U && expectedNumBeats > 0.U
-    val maskAcc = RegInit(VecInit(Seq.fill(beatLim - 1)(false.B)))
     when(io.req.fire) {
       val upper = log2Up(fabricBeatBytes) - 1
       val lower = CLog2Up(userBytes)
 
-      /** What if your channel wants to do an unaligned access? For instance,
-        * with a 32b bus, you're trying to do a 16b write to the address 0x2.
-        * It's illegal to emit a transaction for 0x2, so you have to start it at
-        * 0x0, mask out the two bottom bytes, and THEN put the bytes of interest
-        * on the higher-order bits. If we run into this situation, then we'll
-        * just initialize beatCounter higher. It'll be filled with
-        * old/uninitialized data but who cares?
+      /** What if your channel wants to do an unaligned access? For instance, with a 32b bus, you're
+        * trying to do a 16b write to the address 0x2. It's illegal to emit a transaction for 0x2,
+        * so you have to start it at 0x0, mask out the two bottom bytes, and THEN put the bytes of
+        * interest on the higher-order bits. If we run into this situation, then we'll just
+        * initialize beatCounter higher. It'll be filled with old/uninitialized data but who cares?
         */
       beatCounter := io.req.bits.addr(upper, lower)
+      maskAcc.foreach(_ := false.B)
 //      printf("Address: %x\tStart: %d\n", io.req.bits.addr, io.req.bits.addr(upper, lower))
     }
     when(io.channel.data.fire) {
-      expectedNumBeats := expectedNumBeats - 1.U
-      val bytesGrouped = (0 until userBytes).map(i =>
-        io.channel.data.bits((i + 1) * 8 - 1, i * 8)
-      )
-      beatBuffer(beatCounter) := Cat(bytesGrouped.reverse)
+      // Cat groups things in reverse order. Gotta re-reverse them
+      val bytesGrouped =
+        Cat((0 until userBytes).map(i => io.channel.data.bits((i + 1) * 8 - 1, i * 8)).reverse)
+
+      beatBuffer(beatCounter) := bytesGrouped
+      maskAcc(beatCounter) := true.B
+
       beatCounter := beatCounter + 1.U
-      maskAcc(if (fabricBeatBytes == userBytes) 0.U else beatCounter) := true.B
+      expectedNumBeats := expectedNumBeats - 1.U
+
       when(beatCounter === (beatLim - 1).U || expectedNumBeats === 1.U) {
+        // trigger flushing a beat to the buffer
         enable_buffer_write := true.B
-        val bgc = Cat(bytesGrouped.reverse)
-        val beatBuffer_concat = Wire(Vec(beatLim, UInt((userBytes * 8).W)))
-        val maskAcc_concat = Wire(Vec(beatLim, Bool()))
-        (0 to beatLim - 2) foreach { t =>
-          beatBuffer_concat(t) := beatBuffer(t)
-          maskAcc_concat(t) := maskAcc(t)
-        }
-        beatBuffer_concat.last := DontCare
-        maskAcc_concat.last := false.B
-        beatBuffer_concat(beatCounter) := bgc
+
+        beatBuffer_concat(beatCounter) := bytesGrouped
         maskAcc_concat(beatCounter) := true.B
-        write_buffer_payload := Cat(beatBuffer_concat.reverse)
-        mask_buffer.get.io.enq.bits := Cat(maskAcc_concat.reverse)
+
+        
         maskAcc.foreach(_ := false.B)
         beatCounter := 0.U
       }

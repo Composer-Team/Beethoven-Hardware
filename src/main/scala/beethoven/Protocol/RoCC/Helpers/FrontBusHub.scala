@@ -9,27 +9,16 @@ import org.chipsalliance.diplomacy._
 import org.chipsalliance.diplomacy.tilelink.TLIdentityNode
 
 class FrontBusHub(implicit p: Parameters) extends LazyModule {
-
   val widget = LazyModule(new FrontBusWidget())
-
-//  val tl_in = TLIdentityNode()
-//  widget.node := tl_in
-
   val axi_in = AXI4IdentityNode()
   widget.node := axi_in
 
   val rocc_out = RoccClientNode(RoccMasterParams())
 
-  lazy val module = new AXILHubModule(this)(
-    p
-    // .alterPartial {
-    // case TileVisibilityNodeKey => axi_in
-  // }
-  )
+  lazy val module = new AXILHubModule(this)(p)
 }
 
-class AXILHubModule(outer: FrontBusHub)(implicit p: Parameters)
-    extends LazyModuleImp(outer) {
+class AXILHubModule(outer: FrontBusHub)(implicit p: Parameters) extends LazyModuleImp(outer) {
   val axil_widget = outer.widget.module
 
   val axil_to_rocc = Module(new AXILToRocc)

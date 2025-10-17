@@ -48,12 +48,12 @@ object Shell {
       val (sawar, sw, sr, sb, sig, prefix) = withDMA match {
         case DMAType.ViaDMA =>
           (
-            aw_ar_ignore,
+            aw_ar_sigs,
             w_sigs,
             r_sigs,
             b_sigs,
             Seq(("aw", aw_ar_ignore), ("ar", aw_ar_ignore)),
-            "sh_cl_dma_pcis_"
+            "sh_cl_dma_pcis_bus."
           )
 
         case DMAType.ViaSDA =>
@@ -78,6 +78,7 @@ object Shell {
       val w_connect = sw.map(sig => f".dma_w$sig(${prefix}w$sig)")
       val r_connect = sr.map(sig => f".dma_r$sig(${prefix}r$sig)")
       val b_connect = sb.map(sig => f".dma_b$sig(${prefix}b$sig)")
+
       val ignores = sig.flatMap { case (pref, sigs) =>
         sigs.map(s => f".dma_$pref$s()")
       }
@@ -560,27 +561,28 @@ object Shell {
          |`include "unused_pcim_template.inc"
          |
          |//////////////////// SDA module ///////////////////////////////////////
-         |  assign sda_dma_bus.awvalid       = sda_cl_awvalid;
-         |  assign sda_dma_bus.awaddr[31:0]  = sda_cl_awaddr;
-         |  assign cl_sda_awready           = sda_dma_bus.awready;
+         |`include "unused_cl_sda_template.inc"
+         |//  assign sda_dma_bus.awvalid       = sda_cl_awvalid;
+         |//  assign sda_dma_bus.awaddr[31:0]  = sda_cl_awaddr;
+         |//  assign cl_sda_awready           = sda_dma_bus.awready;
          |
-         |  assign sda_dma_bus.wdata[31:0]   = sda_cl_wdata;
-         |  assign sda_dma_bus.wstrb[3:0]    = sda_cl_wstrb;
-         |  assign sda_dma_bus.wvalid        = sda_cl_wvalid;
-         |  assign cl_sda_wready            = sda_dma_bus.wready;
+         |//  assign sda_dma_bus.wdata[31:0]   = sda_cl_wdata;
+         |//  assign sda_dma_bus.wstrb[3:0]    = sda_cl_wstrb;
+         |//  assign sda_dma_bus.wvalid        = sda_cl_wvalid;
+         |//  assign cl_sda_wready            = sda_dma_bus.wready;
          |
-         |  assign cl_sda_bresp             = sda_dma_bus.bresp;
-         |  assign cl_sda_bvalid            = sda_dma_bus.bvalid;
-         |  assign sda_dma_bus.bready        = sda_cl_bready;
+         |//  assign cl_sda_bresp             = sda_dma_bus.bresp;
+         |//  assign cl_sda_bvalid            = sda_dma_bus.bvalid;
+         |//  assign sda_dma_bus.bready        = sda_cl_bready;
          |
-         |  assign sda_dma_bus.araddr[31:0]  = sda_cl_araddr;
-         |  assign sda_dma_bus.arvalid       = sda_cl_arvalid;
-         |  assign cl_sda_arready           = sda_dma_bus.arready;
+         |//  assign sda_dma_bus.araddr[31:0]  = sda_cl_araddr;
+         |//  assign sda_dma_bus.arvalid       = sda_cl_arvalid;
+         |//  assign cl_sda_arready           = sda_dma_bus.arready;
          |
-         |  assign cl_sda_rresp             = sda_dma_bus.rresp;
-         |  assign cl_sda_rdata             = sda_dma_bus.rdata[31:0];
-         |  assign cl_sda_rvalid            = sda_dma_bus.rvalid;
-         |  assign sda_dma_bus.rready        = sda_cl_rready;
+         |//  assign cl_sda_rresp             = sda_dma_bus.rresp;
+         |//  assign cl_sda_rdata             = sda_dma_bus.rdata[31:0];
+         |//  assign cl_sda_rvalid            = sda_dma_bus.rvalid;
+         |//  assign sda_dma_bus.rready        = sda_cl_rready;
          |//////////////////// IRQ module ///////////////////////////////////////
          |`include "unused_apppf_irq_template.inc"
          |

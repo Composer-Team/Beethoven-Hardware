@@ -67,9 +67,9 @@ class AXILWidgetModule(outer: FrontBusWidget) extends LazyModuleImp(outer) {
     val addr = allocated << log2Up(p(PlatformKey).frontBusBeatBytes)
     CppGeneration.addPreprocessorDefinition(name, addr)
 
-    val state = RegInit(init)
+    val state = RegInit(UInt(32.W), init)
     mcrio.write(allocated).ready := true.B
-    when(mcrio.write(allocated).fire) {
+    when(mcrio.write(allocated).valid) {
       state := mcrio.write(allocated).bits
     }
     mcrio.read(allocated).bits := 0xFAFABCBCL.U
