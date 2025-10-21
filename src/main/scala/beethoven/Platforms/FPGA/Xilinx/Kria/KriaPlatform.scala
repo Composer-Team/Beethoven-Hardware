@@ -51,6 +51,9 @@ case class KriaPlatform(
         board_part = "xilinx.com:kv260_som:part0:1.4"
       )(p)
       s.write_to_dir(BeethovenBuild.top_build_dir / "implementation")
+      // this should be safe because no synchronous logic in top level, only instantiations. Vivado doesn't
+      // like .sv top-levels
+      os.move(BeethovenBuild.hw_build_dir / "BeethovenTop.sv", BeethovenBuild.hw_build_dir / "BeethovenTop.v")
     }
   }
 
