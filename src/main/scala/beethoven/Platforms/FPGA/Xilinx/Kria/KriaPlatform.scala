@@ -26,7 +26,7 @@ case class KriaPlatform(
   override val frontBusBaseAddress: Long = 0x2000000000L
   override val frontBusAddressNBits: Int = 40
   override val frontBusAddressMask: Long = 0xffffL
-  override val frontBusBeatBytes: Int = 8
+  override val frontBusBeatBytes: Int = 16
   override val frontBusProtocol: FrontBusProtocol = new AXIFrontBusProtocol
 
   override val physicalMemoryBytes: Long = 4L << 30
