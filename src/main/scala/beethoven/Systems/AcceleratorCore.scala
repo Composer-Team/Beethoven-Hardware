@@ -15,6 +15,7 @@ import chisel3.util._
 import org.chipsalliance.diplomacy.tilelink._
 
 import scala.language.implicitConversions
+import MemoryStreams.Writers.WriterDataChannelIO
 
 class CustomIO[T1 <: AccelCommand, T2 <: AccelResponse](
     bundleIn: T1,

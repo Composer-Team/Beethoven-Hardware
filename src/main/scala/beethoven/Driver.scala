@@ -23,6 +23,7 @@ import chisel3.stage.phases.Elaborate
 import chisel3.stage.phases.Convert
 import firrtl.AnnotationSeq
 import circt.stage.SplitVerilog
+import chisel3.emitVerilog
 
 class BeethovenChipStage extends ChiselStage {
   // override val shell = new Shell("beethoven-compile")
@@ -159,15 +160,7 @@ class BeethovenBuild(
       }
     }
     beethoven.platform(configWithBuildMode).platformCheck()
-
-    // for carson to test
-    // config.configs.foreach {
-    //   a: AcceleratorSystemConfig =>
-    //     a.moduleConstructor.estimateFPGAResources(a.moduleConstructor match {
-    //       case ModuleBuilder(constructor) =>
-    //         () => constructor(configWithBuildMode)
-    //     })(configWithBuildMode)
-    // }
+    
     (new ChiselStage).execute(
       Array(
         "--target-dir",
@@ -181,16 +174,18 @@ class BeethovenBuild(
         FirtoolOption("--disable-all-randomization"),
         FirtoolOption(
           "--lowering-options=locationInfoStyle=wrapInAtSquareBracket," +
-          "mitigateVivadoArrayIndexConstPropBug,locationInfoStyle=wrapInAtSquareBracket," +
-          "disallowLocalVariables"
+            "mitigateVivadoArrayIndexConstPropBug,locationInfoStyle=wrapInAtSquareBracket," +
+            "disallowLocalVariables"
         )
+        ,FirtoolOption("-O=debug")
       )
     )
 
     os.remove.all(hw_build_dir / "firrtl_black_box_resource_files.f")
-    val allChiselGeneratedSrcs = WalkPath(hw_build_dir).filter{p =>
+    val allChiselGeneratedSrcs = WalkPath(hw_build_dir).filter { p =>
       val rel = p.relativeTo(hw_build_dir).toString()
-      !rel.contains("verification/") && os.isFile(p)}
+      !rel.contains("verification/") && os.isFile(p)
+    }
 
     val chiselGeneratedSrcs = allChiselGeneratedSrcs
       .filter(a => !a.toString().contains("ShiftReg") && !a.toString().contains("Queue"))
@@ -252,7 +247,7 @@ class BeethovenBuild(
         )
         Some("dma")
       } else None
-  
+
       val tcs = ((Seq(tc_front) ++ tc_axi ++ Seq(dma_annot)) filter (_.isDefined) map (_.get))
         .mkString(":")
       Annotators.AnnotateTopClock(
@@ -270,14 +265,15 @@ class BeethovenBuild(
     )
 //    println("wrote to " + gsrc_dir / "vcs_srcs.in")
     val allSrcs =
-      (chiselGeneratedSrcs.filter(!os.isDir(_)).toList ++ movedSrcs.filter(a => !os.isDir(a)).toList).filter{
-        p => 
-          val i = p.toString().lastIndexOf(".")
-          // println(p + " " + p.toString().substring(i))
-          p.toString().substring(i) match {
-            case ".v" | ".sv" | ".svh" => true
-            case _ => false
-          }
+      (chiselGeneratedSrcs
+        .filter(!os.isDir(_))
+        .toList ++ movedSrcs.filter(a => !os.isDir(a)).toList).filter { p =>
+        val i = p.toString().lastIndexOf(".")
+        // println(p + " " + p.toString().substring(i))
+        p.toString().substring(i) match {
+          case ".v" | ".sv" | ".svh" => true
+          case _                     => false
+        }
       }
     os.write.over(
       top_build_dir / "vcs_srcs.in",

@@ -98,7 +98,7 @@ always @(posedge clock) begin
         state <= `FLUSH;
       end
     end else if (state == `FLUSH) begin
-      if (vec_out_req_ready) begin
+      if (vec_out_req_ready && write_isFlushed_0_0) begin
         state <= `RESPONSE;
       end
     end else if (state == `RESPONSE) begin

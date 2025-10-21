@@ -5,17 +5,13 @@ import chisel3._
 import chisel3.util._
 import beethoven._
 import beethoven.MemoryStreams.Loaders.ScratchpadPackedSubwordLoader
-import beethoven.common.{Address, CLog2Up, ShiftReg, splitIntoChunks}
+import beethoven.common._
 import beethoven.MemoryStreams.MemoryScratchpad.has_warned
-import beethoven.MemoryStreams.Readers.{
-  LightweightReader,
-  LightweightReader_small,
-  ReadChannelIO,
-  ReaderModuleIO,
-  SequentialReader
-}
+import beethoven.MemoryStreams.Readers._
+import beethoven.MemoryStreams.Writers._
 import org.chipsalliance.diplomacy._
 import org.chipsalliance.diplomacy.tilelink._
+import Writers.SequentialWriter
 
 sealed abstract class ScratchpadPort extends Bundle {}
 

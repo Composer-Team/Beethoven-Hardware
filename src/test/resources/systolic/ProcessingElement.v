@@ -6,6 +6,7 @@ module ProcessingElement (
   input [15:0] act,
   input act_valid,
 
+  // input coming from the right
   input [15:0] accumulator_shift,
   // ctrl
   input rst_output,
@@ -27,7 +28,7 @@ wire        act_s = act[15];
 // take the product of the fractional parts
 wire [29:0] product = wgt_f * act_f;
 // extract the lower 7b integer bits and the upper 8b of fraction
-wire [14:0] product_f = product[23:8];
+wire [14:0] product_f = product[22:8];
 // get the new sign bit
 wire        product_s = act_s ^ wgt_s;
 
@@ -46,7 +47,7 @@ wire        oflow = addition[14];
 wire        n_acc_s = accumulator_s ^ oflow;
 
 // if there is an underflow, then it flips to the 2s-complement negative - flip it back to positive
-wire [14:0] n_acc_f = (addition ^ {16{oflow}}) + oflow;
+wire [14:0] n_acc_f = (addition ^ {15{oflow}}) + oflow;
 wire [15:0] updated_accumulator = {n_acc_s, n_acc_f};
 
 
@@ -61,13 +62,13 @@ always @(posedge clk) begin
     end else begin
       wgt_valid_out <= wgt_valid;
       act_valid_out <= act_valid;
+      wgt_out <= wgt;
+      act_out <= act;
       if (wgt_valid && act_valid) begin
         accumulator <= updated_accumulator;
       end
     end
   end
-  wgt_out <= wgt;
-  act_out <= act;
 end
 
 endmodule

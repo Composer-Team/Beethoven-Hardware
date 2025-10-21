@@ -22,7 +22,7 @@ int main() {
   fpga_handle_t handle;
   // 8 x 8 systolic array
   // problem size
-  int inner_dimension = 128;
+  int inner_dimension = 2;
 
   // allocate memory for the accelerator
   auto activations = handle.malloc(sizeof(int16_t) * 8 * inner_dimension);

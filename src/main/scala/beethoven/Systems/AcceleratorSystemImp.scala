@@ -8,6 +8,7 @@ import beethoven.Floorplanning.ResetBridge
 import beethoven.MemoryStreams.Readers.SequentialReader
 import beethoven.MemoryStreams._
 import org.chipsalliance.diplomacy.LazyModuleImp
+import beethoven.MemoryStreams.Writers.SequentialWriter
 
 class AcceleratorSystemImp(val outer: AcceleratorSystem)(implicit p: Parameters)
     extends LazyModuleImp(outer) {

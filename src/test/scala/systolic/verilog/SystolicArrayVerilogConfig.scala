@@ -1,4 +1,4 @@
-package systolic
+package systolic.verilog
 import beethoven._
 import chisel3._
 import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2Platform
@@ -10,6 +10,7 @@ class SystolicArrayCmd extends AccelCommand("matmul") {
   val out_addr = UInt(64.W)
   val inner_dimension = UInt(20.W)
 }
+
 class SystolicArrayConfig(systolicArrayDim: Int, dataWidthBytes: Int)
     extends AcceleratorConfig(
       AcceleratorSystemConfig(
@@ -22,9 +23,9 @@ class SystolicArrayConfig(systolicArrayDim: Int, dataWidthBytes: Int)
               EmptyAccelResponse()
             )
           ),
-          os.pwd / "src" / "test" / "verilog" / "systolic",
+          os.pwd / "src" / "test" / "resources" / "systolic",
           externalDependencies = {
-            val src_dir = os.pwd / "src" / "test" / "verilog" / "systolic"
+            val src_dir = os.pwd / "src" / "test" / "resources" / "systolic"
             Some(
               Seq(
                 src_dir / "ProcessingElement.v",
