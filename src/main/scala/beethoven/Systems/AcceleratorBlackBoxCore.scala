@@ -17,7 +17,7 @@ object AcceleratorBlackBoxCore {
       val dim: Seq[Int],
       val sources: Seq[String]
   ) {
-    val name = nm.strip().stripSuffix("_")
+    val name = nm.trim().stripSuffix("_")
 
     override def toString: String = f"PORT[nm:'$nm', out:$dir, srcs: $sources]"
   }

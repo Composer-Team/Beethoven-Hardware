@@ -94,7 +94,7 @@ object BeethovenBuild {
     val config = os.read(os.home / f".${sh}rc")
     val pattern = Pattern.compile("export BEETHOVEN_PATH=([a-zA-Z/.]*)")
     val matcher = pattern.matcher(config)
-    if (matcher.find()) matcher.group(0).split("=")(1).strip()
+    if (matcher.find()) matcher.group(0).split("=")(1).trim()
     else throw new Exception(errorNoCR)
   }
 
