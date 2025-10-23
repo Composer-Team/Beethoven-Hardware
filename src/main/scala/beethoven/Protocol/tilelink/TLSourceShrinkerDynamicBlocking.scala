@@ -98,7 +98,7 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters)
         val nextFree = PriorityEncoder(~allocated)
         val full = allocated.andR
         val a_in_valid = RegInit(false.B)
-        val a_in = Reg(in.a.bits)
+        val a_in = Reg(in.a.bits.cloneType)
         out.a.valid := a_in_valid
         out.a.bits := a_in
 
@@ -163,7 +163,7 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters)
           a_in_valid := canAcceptOnA && in.a.valid
         }
 
-        val d_in = Reg(in.d.bits)
+        val d_in = Reg(in.d.bits.cloneType)
         val d_in_valid = RegInit(false.B)
         in.d.bits := d_in
         in.d.valid := d_in_valid
