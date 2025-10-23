@@ -40,6 +40,7 @@ object SynthScript {
       precompile_dependencies: Seq[String] = Seq(),
       part_name: String, // this is kria
       board_part: String, // also kria
+      board_connection: String, // board that kria sits on
       top_module: String = "BeethovenTop",
       ip_inline: Boolean = true
   )(implicit p: Parameters): SynthSet = {
@@ -64,6 +65,7 @@ exec rm -rf ips
 exec mkdir -p ips
 ${if (ip_inline) ip_str else ""}
 set_property board_part ${board_part} [current_project]
+set_property board_connections {${board_connection}} [current_project]
 
 create_bd_design "design_1"
 
@@ -76,7 +78,7 @@ set_property -dict [list \\
     CONFIG.PSU__MAXIGP0__DATA_WIDTH {${platform.frontBusBeatBytes * 8}} \\
     CONFIG.PSU__SAXIGP2__DATA_WIDTH {128} \\
     CONFIG.PSU__USE__M_AXI_GP1 {0} \\
-    CONFIG.PSU__USE__S_AXI_GP2 {1} \\
+    CONFIG.PSU__USE__S_AXI_GP0 {1} \\
     CONFIG.PSU__FPGA_PL0_ENABLE {1} \\
     CONFIG.PSU__CRL_APB__PL0_REF_CTRL__FREQMHZ {${platform.clockRateMHz.toString}} \\
 ] [get_bd_cells soc]
@@ -95,8 +97,8 @@ apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {Auto} Cl
   intc_ip {New AXI SmartConnect} master_apm {0}} [get_bd_intf_pins top/S00_AXI]
 
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {Auto} Clk_slave {Auto} \\
-  Clk_xbar {Auto} Master {/top/M00_AXI} Slave {/soc/S_AXI_HP0_FPD} ddr_seg {Auto}              \\
-  intc_ip {New AXI SmartConnect} master_apm {0}} [get_bd_intf_pins soc/S_AXI_HP0_FPD]
+  Clk_xbar {Auto} Master {/top/M00_AXI} Slave {/soc/S_AXI_HPC0_FPD} ddr_seg {Auto}              \\
+  intc_ip {New AXI SmartConnect} master_apm {0}} [get_bd_intf_pins soc/S_AXI_HPC0_FPD]
 
 # Make wrapper and setup build environment
 make_wrapper -files [get_files [exec find ${output_dir} -name "design_1.bd" ] ] -top

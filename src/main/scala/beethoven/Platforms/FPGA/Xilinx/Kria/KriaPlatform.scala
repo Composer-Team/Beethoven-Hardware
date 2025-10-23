@@ -48,7 +48,8 @@ case class KriaPlatform(
         "beethoven",
         "xilinx_work",
         part_name = "xck26-sfvc784-2LV-c",
-        board_part = "xilinx.com:kv260_som:part0:1.4"
+        board_part = "xilinx.com:kv260_som:part0:1.4",
+        board_connection = "som240_1_connector xilinx.com:kv260_carrier:som240_1_connection:1.3"
       )(p)
       s.write_to_dir(BeethovenBuild.top_build_dir / "implementation")
       // this should be safe because no synchronous logic in top level, only instantiations. Vivado doesn't
