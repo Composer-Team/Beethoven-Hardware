@@ -10,11 +10,12 @@ import beethoven.Protocol.FrontBus.{AXIFrontBusProtocol, FrontBusProtocol}
 import os.Path
 import beethoven.common.tclMacro
 
-case class KriaPlatform(
+case class AUPZU3Platform(
+    val DRAMSizeGB: Int, // 4 or 8 for AUP-ZU3 board
     memoryNChannels: Int = 1,
     override val clockRateMHz: Int = 100,
     overrideMemoryBusWidthBytes: Option[Int] = None,
-    override val hasDebugAXICACHEPROT: Boolean = false
+    override val hasDebugAXICACHEPROT: Boolean = true
 ) extends Platform
     with HasPostProccessorScript
     with HasXilinxMem {
@@ -29,7 +30,11 @@ case class KriaPlatform(
   override val frontBusBeatBytes: Int = 16
   override val frontBusProtocol: FrontBusProtocol = new AXIFrontBusProtocol
 
-  override val physicalMemoryBytes: Long = 4L << 30
+  assert(
+    DRAMSizeGB == 4 || DRAMSizeGB == 8,
+    "AUP-ZU3 board only supports 4 or 8 GB of DRAM. Please set DRAMSizeGB as 4 or 8 accordingly."
+  )
+  override val physicalMemoryBytes: Long = DRAMSizeGB.toLong << 30
   override val memorySpaceAddressBase: Long = 0x0
   override val memorySpaceSizeBytes: BigInt = 1L << 49
   override val memoryControllerIDBits: Int = 6
@@ -43,15 +48,19 @@ case class KriaPlatform(
     }
 
   override def postProcessorMacro(p: Parameters, paths: Seq[Path]): Unit = {
-    val disabled_master_axi:String = "1"
-
+    val board_part = if (DRAMSizeGB == 4) {
+      "realdigital.org:aup-zu3-4gb:part0:1.0"
+    } else {
+      "realdigital.org:aup-zu3-8gb:part0:1.0"
+    }
+    val disabled_master_axi:String = "2"
     if (p(BuildModeKey) == BuildMode.Synthesis) {
       val s = SynthScript(
         "beethoven",
         "xilinx_work",
-        part_name = "xck26-sfvc784-2LV-c",
-        board_part = "xilinx.com:kv260_som:part0:1.4",
-        board_connection = "som240_1_connector xilinx.com:kv260_carrier:som240_1_connection:1.3",
+        part_name = "xczu3eg-sfvc784-2-e",
+        board_part = board_part,
+        board_connection = "",
         disabled_master_axi = disabled_master_axi,
       )(p)
       s.write_to_dir(BeethovenBuild.top_build_dir / "implementation")
@@ -67,6 +76,6 @@ case class KriaPlatform(
   override val physicalInterfaces: List[PhysicalInterface] =
     List(PhysicalHostInterface(0), PhysicalMemoryInterface(0, 0))
   override val physicalConnectivity: List[(Int, Int)] = List.empty
-  override val nURAMs: Map[Int, Int] = Map { (0, 64) }
-  override val nBRAMs: Map[Int, Int] = Map { (0, 144) }
+  override val nURAMs: Map[Int, Int] = Map { (0, 0) }
+  override val nBRAMs: Map[Int, Int] = Map { (0, 216) }
 }
