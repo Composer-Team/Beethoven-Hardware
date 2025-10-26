@@ -44,6 +44,7 @@ case class KriaPlatform(
 
   override def postProcessorMacro(p: Parameters, paths: Seq[Path]): Unit = {
     val disabled_master_axi:String = "1"
+    val slave_AXIGP_datawidth:String = "2"
 
     if (p(BuildModeKey) == BuildMode.Synthesis) {
       val s = SynthScript(
@@ -53,6 +54,7 @@ case class KriaPlatform(
         board_part = "xilinx.com:kv260_som:part0:1.4",
         board_connection = "som240_1_connector xilinx.com:kv260_carrier:som240_1_connection:1.3",
         disabled_master_axi = disabled_master_axi,
+        slave_AXIGP_datawidth = slave_AXIGP_datawidth
       )(p)
       s.write_to_dir(BeethovenBuild.top_build_dir / "implementation")
       // this should be safe because no synchronous logic in top level, only instantiations. Vivado doesn't

@@ -42,6 +42,7 @@ object SynthScript {
       board_part: String, // also kria
       board_connection: String, // board that kria sits on
       disabled_master_axi: String, // For Zynq, master AXI to disable
+      slave_AXIGP_datawidth: String, // For Zync, PSU__MAXIGP?__DATA_WIDTH
       top_module: String = "BeethovenTop",
       ip_inline: Boolean = true
   )(implicit p: Parameters): SynthSet = {
@@ -77,7 +78,8 @@ endgroup
 apply_bd_automation -rule xilinx.com:bd_rule:zynq_ultra_ps_e -config {apply_board_preset "1" } [get_bd_cells soc]
 set_property -dict [list \\
     CONFIG.PSU__MAXIGP0__DATA_WIDTH {${platform.frontBusBeatBytes * 8}} \\
-    CONFIG.PSU__SAXIGP2__DATA_WIDTH {128} \\
+    CONFIG.PSU__SAXIGP${slave_AXIGP_datawidth}__DATA_WIDTH {128} \\
+    CONFIG.PSU__USE__M_AXI_GP0 {1} \\
     CONFIG.PSU__USE__M_AXI_GP${disabled_master_axi} {0} \\
     CONFIG.PSU__USE__S_AXI_GP0 {1} \\
     CONFIG.PSU__FPGA_PL0_ENABLE {1} \\

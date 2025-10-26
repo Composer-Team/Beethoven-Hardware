@@ -54,6 +54,7 @@ case class AUPZU3Platform(
       "realdigital.org:aup-zu3-8gb:part0:1.0"
     }
     val disabled_master_axi:String = "2"
+    val slave_AXIGP_datawidth:String = "0"
     if (p(BuildModeKey) == BuildMode.Synthesis) {
       val s = SynthScript(
         "beethoven",
@@ -62,6 +63,7 @@ case class AUPZU3Platform(
         board_part = board_part,
         board_connection = "",
         disabled_master_axi = disabled_master_axi,
+        slave_AXIGP_datawidth = slave_AXIGP_datawidth,
       )(p)
       s.write_to_dir(BeethovenBuild.top_build_dir / "implementation")
       // this should be safe because no synchronous logic in top level, only instantiations. Vivado doesn't
