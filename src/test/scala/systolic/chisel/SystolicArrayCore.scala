@@ -5,7 +5,7 @@ import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 
-class SystolicArrayCore()(implicit p: Parameters) extends AcceleratorCore {
+class SystolicArrayCore(dim: Int)(implicit p: Parameters) extends AcceleratorCore {
   val io = BeethovenIO(new SystolicArrayCmd(), EmptyAccelResponse())
   val ReaderModuleChannel(weights_req, weights) = getReaderModule("weights")
   val ReaderModuleChannel(activations_req, activations) = getReaderModule("activations")
@@ -16,9 +16,9 @@ class SystolicArrayCore()(implicit p: Parameters) extends AcceleratorCore {
   weights_req.valid := cmd_fire
   activations_req.valid := cmd_fire
 
-  output_req.bits.len := 2.U * 8.U * 8.U
-  weights_req.bits.len := 2.U * 8.U * io.req.bits.inner_dimension
-  activations_req.bits.len := 2.U * 8.U * io.req.bits.inner_dimension
+  output_req.bits.len := 2.U * (dim * dim).U
+  weights_req.bits.len := 2.U * dim.U * io.req.bits.inner_dimension
+  activations_req.bits.len := 2.U * dim.U * io.req.bits.inner_dimension
 
   weights_req.bits.addr := Address(io.req.bits.wgt_addr)
   activations_req.bits.addr := Address(io.req.bits.act_addr)

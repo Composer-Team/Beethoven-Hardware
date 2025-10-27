@@ -1,30 +1,30 @@
 package systolic.chisel
 import chisel3._
 import chisel3.util._
-import _root_.circt.stage.FirtoolOption
+import systolic.Constants._
 
 class ProcessingElement extends chisel3.Module {
   val io = IO(new Bundle {
-    val wgt = Input(UInt(16.W))
+    val wgt = Input(UInt(data_width_bits.W))
     val wgt_valid = Input(Bool())
-    val act = Input(UInt(16.W))
+    val act = Input(UInt(data_width_bits.W))
     val act_valid = Input(Bool())
 
-    val accumulator_shift = Input(UInt(16.W))
+    val accumulator_shift = Input(UInt(data_width_bits.W))
     val rst_output = Input(Bool())
     val shift_out = Input(Bool())
 
-    val accumulator = Output(UInt(16.W))
-    val wgt_out = Output(UInt(16.W))
+    val accumulator = Output(UInt(data_width_bits.W))
+    val wgt_out = Output(UInt(data_width_bits.W))
     val wgt_valid_out = Output(Bool())
-    val act_out = Output(UInt(16.W))
+    val act_out = Output(UInt(data_width_bits.W))
     val act_valid_out = Output(Bool())
   })
 
-  val accumulator = Reg(UInt(16.W))
-  val wgt_out = Reg(UInt(16.W))
+  val accumulator = Reg(UInt(data_width_bits.W))
+  val wgt_out = Reg(UInt(data_width_bits.W))
   val wgt_valid_out = Reg(Bool())
-  val act_out = Reg(UInt(16.W))
+  val act_out = Reg(UInt(data_width_bits.W))
   val act_valid_out = Reg(Bool())
   io.accumulator := accumulator
   io.wgt_out := wgt_out
@@ -32,26 +32,26 @@ class ProcessingElement extends chisel3.Module {
   io.act_out := act_out
   io.act_valid_out := act_valid_out
 
-  val wgt_f = io.wgt(14, 0)
-  val act_f = io.act(14, 0)
-  val wgt_s = io.wgt(15)
-  val act_s = io.act(15)
+  val wgt_f = io.wgt.tail(1)
+  val act_f = io.act.tail(1)
+  val wgt_s = io.wgt.head(1).asBool
+  val act_s = io.act.head(1).asBool
 
   val product = wgt_f * act_f
-  val product_f = product(22, 8)
+  val product_f = product(frac_bits * 2 + int_bits - 1, frac_bits)
   val product_s = act_s ^ wgt_s;
 
-  val accumulator_f = accumulator(14, 0)
-  val accumulator_s = accumulator(15)
+  val accumulator_f = accumulator.tail(1)
+  val accumulator_s = accumulator.head(1).asBool
 
   val opp_sign = product_s ^ accumulator_s
   val adj_product_f = Mux(opp_sign, (~product_f) + 1.U, product_f)
   val addition = accumulator_f + adj_product_f
 
-  val oflow = addition(14)
+  val oflow = addition.tail(1).head(1).asBool
   val n_acc_s = accumulator_s ^ oflow
 
-  val n_acc_f = (addition ^ VecInit(Seq.fill(15)(oflow)).asUInt) + oflow
+  val n_acc_f = (addition ^ VecInit(Seq.fill(data_width_bits - 1)(oflow)).asUInt) + oflow
   val updated_accumulator = Cat(n_acc_s, n_acc_f)
 
   when(io.rst_output) {
@@ -74,8 +74,8 @@ class ProcessingElement extends chisel3.Module {
 
 }
 
-object ProcessingElement {
-  final def main(args: Array[String]): Unit = {
-    println(emitVerilog(new ProcessingElement, annotations = Seq(FirtoolOption("--help"))))
-  }
-}
+// object ProcessingElement {
+//   final def main(args: Array[String]): Unit = {
+//     println(emitVerilog(new ProcessingElement, annotations = Seq(FirtoolOption("--help"))))
+//   }
+// }

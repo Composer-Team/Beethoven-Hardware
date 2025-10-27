@@ -1,16 +1,16 @@
 // 8x8 systolic array
-module SystolicArray (
+module SystolicArray #(parameter SYSTOLIC_ARRAY_DIM, DATA_WIDTH_BITS, INT_BITS, FRAC_BITS) (
   input clk,
   input rst,
 
-  input [127:0] act_in,
+  input [(SYSTOLIC_ARRAY_DIM * DATA_WIDTH_BITS - 1):0] act_in,
   input act_valid,
   output act_ready,
-  input [127:0] wgt_in,
+  input [(SYSTOLIC_ARRAY_DIM * DATA_WIDTH_BITS - 1):0] wgt_in,
   input wgt_valid,
   output wgt_ready,
 
-  output [127:0] accumulator_out,
+  output [(SYSTOLIC_ARRAY_DIM * DATA_WIDTH_BITS - 1):0] accumulator_out,
   output accumulator_out_valid,
   input accumulator_out_ready,
 
@@ -20,12 +20,12 @@ module SystolicArray (
 );
 
 // we're going to split up the 128b bus into 16b payloads
-wire [15:0] wgt_shifts [0:8] [0:7];
-wire [15:0] act_shifts [0:7] [0:8];
-wire [15:0] out_shifts [0:7] [0:8];
+wire [(DATA_WIDTH_BITS - 1):0] wgt_shifts   [0:SYSTOLIC_ARRAY_DIM]     [0:(SYSTOLIC_ARRAY_DIM-1)];
+wire [(DATA_WIDTH_BITS - 1):0] act_shifts   [0:(SYSTOLIC_ARRAY_DIM-1)] [0:SYSTOLIC_ARRAY_DIM];
+wire [(DATA_WIDTH_BITS - 1):0] out_shifts   [0:(SYSTOLIC_ARRAY_DIM-1)] [0:SYSTOLIC_ARRAY_DIM];
 // valid bits
-wire        wgt_v_shifts [0:8] [0:7];
-wire        act_v_shifts [0:7] [0:8];
+wire                           wgt_v_shifts [0:SYSTOLIC_ARRAY_DIM]     [0:(SYSTOLIC_ARRAY_DIM-1)];
+wire                           act_v_shifts [0:(SYSTOLIC_ARRAY_DIM-1)] [0:SYSTOLIC_ARRAY_DIM];
 
 
 // state machine
@@ -63,7 +63,7 @@ always @(posedge clk) begin
     end else if (state == `GO) begin
       if (can_increment_inputs) begin
         if (n_inner_dimension_ctr == 0) begin
-          inner_dimension_ctr <= 16;
+          inner_dimension_ctr <= (2 * SYSTOLIC_ARRAY_DIM);
           state <= `DRAIN;
         end else begin
           inner_dimension_ctr <= n_inner_dimension_ctr;
@@ -72,7 +72,7 @@ always @(posedge clk) begin
     end else if (state == `DRAIN) begin
       inner_dimension_ctr <= n_inner_dimension_ctr;
       if (n_inner_dimension_ctr == 0) begin
-        inner_dimension_ctr <= 8;
+        inner_dimension_ctr <= (SYSTOLIC_ARRAY_DIM);
         state <= `SHIFT;
       end
     end else begin
@@ -88,15 +88,15 @@ end
 
 generate
   genvar i, j;
-  for (i = 0; i < 8; i = i + 1) begin
-    wire [15:0] wgt_slice;
-    assign wgt_slice = wgt_in[((i+1) * 16)-1 -: 16];
-    assign accumulator_out[(i+1)*16 - 1 -: 16] = out_shifts[i][0];
+  for (i = 0; i < SYSTOLIC_ARRAY_DIM; i = i + 1) begin
+    wire [(DATA_WIDTH_BITS - 1):0] wgt_slice;
+    assign wgt_slice = wgt_in[((i+1) * DATA_WIDTH_BITS)-1 -: DATA_WIDTH_BITS];
+    assign accumulator_out[(i+1)*DATA_WIDTH_BITS - 1 -: DATA_WIDTH_BITS] = out_shifts[i][0];
     if (i == 0) begin
       assign wgt_shifts[0][i] = wgt_slice;
       assign wgt_v_shifts[0][i] = wgt_valid;
     end else begin
-      ShiftReg #(.WIDTH(17), .DEPTH(i)) sr  (
+      ShiftReg #(.WIDTH(DATA_WIDTH_BITS + 1), .DEPTH(i)) sr  (
         .clk(clk),
         .rst(rst),
         .en(can_increment_inputs),
@@ -105,13 +105,13 @@ generate
       );
     end
 
-    wire [15:0] act_slice = act_in[((i+1) * 16)-1 -: 16];
+    wire [(DATA_WIDTH_BITS - 1):0] act_slice = act_in[((i+1) * DATA_WIDTH_BITS)-1 -: DATA_WIDTH_BITS];
     if (i == 0) begin
       assign act_shifts[i][0] = act_slice;
       assign act_v_shifts[i][0] = wgt_valid;
     end else begin
-      wire [16:0] sr_out;
-      ShiftReg #(.WIDTH(17), .DEPTH(i)) sr  (
+      wire [DATA_WIDTH_BITS:0] sr_out;
+      ShiftReg #(.WIDTH(DATA_WIDTH_BITS + 1), .DEPTH(i)) sr  (
         .clk(clk),
         .rst(rst),
         .en(can_increment_inputs),
@@ -119,8 +119,8 @@ generate
         .d_out({act_v_shifts[i][0], act_shifts[i][0]})
       );
     end
-    for (j = 0; j < 8; j = j + 1) begin
-      ProcessingElement pe(
+    for (j = 0; j < SYSTOLIC_ARRAY_DIM; j = j + 1) begin
+      ProcessingElement #(.DATA_WIDTH_BITS(DATA_WIDTH_BITS), .FRAC_BITS(FRAC_BITS), .INT_BITS(INT_BITS)) pe(
         .clk(clk),
 
         .wgt(wgt_shifts[i][j]),

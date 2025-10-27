@@ -463,6 +463,21 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
        |""".stripMargin
 
   val (portInit, wireDec) = getVerilogModulePortInstantiation(allIOs_noreserved)
+
+  val macro_params = {
+    val params = systemParams.moduleConstructor.asInstanceOf[BlackboxBuilderCustom].verilogMacroParams 
+    if (params.isEmpty) {
+      ""
+    } else {
+      "#(" + params.keySet.map { pName =>
+        val v = params(pName) match {
+          case s: String => f"\"$s\""
+          case a => a.toString()
+        }
+        f".${pName}(${v})"
+      }.mkString(", ") + ")"
+    }
+  }
   val bbWrapper =
     f"""
        |module ${this.desiredName} (
@@ -473,7 +488,7 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
        |
        |$wireDec
        |
-       |${systemParams.name} ${systemParams.name}_inst (
+       |${systemParams.name} ${macro_params} ${systemParams.name}_inst (
        |  .clock(clock),
        |  .reset(reset),
        |$portInit

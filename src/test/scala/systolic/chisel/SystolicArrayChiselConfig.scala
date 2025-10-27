@@ -2,7 +2,7 @@ package systolic.chisel
 import beethoven._
 import chisel3._
 import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2Platform
-import dataclass.data
+import systolic.Constants._
 
 class SystolicArrayCmd extends AccelCommand("matmul") {
   val wgt_addr = UInt(64.W)
@@ -11,24 +11,24 @@ class SystolicArrayCmd extends AccelCommand("matmul") {
   val inner_dimension = UInt(20.W)
 }
 
-class SystolicArrayChiselConfig(systolicArrayDim: Int, dataWidthBytes: Int)
+class SystolicArrayChiselConfig(nCores: Int)
     extends AcceleratorConfig(
       AcceleratorSystemConfig(
-        nCores = 1,
+        nCores = nCores,
         name = "SystolicArrayCore",
-        moduleConstructor = new ModuleBuilder(p => new SystolicArrayCore()(p)),
+        moduleConstructor = new ModuleBuilder(p => new SystolicArrayCore(systolic_array_dim)(p)),
         memoryChannelConfig = List(
           ReadChannelConfig(
             "weights",
-            dataBytes = dataWidthBytes * systolicArrayDim
+            dataBytes = data_width_bytes * systolic_array_dim
           ),
           ReadChannelConfig(
             "activations",
-            dataBytes = dataWidthBytes * systolicArrayDim
+            dataBytes = data_width_bytes * systolic_array_dim
           ),
           WriteChannelConfig(
             "vec_out",
-            dataBytes = dataWidthBytes * systolicArrayDim
+            dataBytes = data_width_bytes * systolic_array_dim
           )
         )
       )
@@ -36,7 +36,7 @@ class SystolicArrayChiselConfig(systolicArrayDim: Int, dataWidthBytes: Int)
 
 object SystolicArrayConfig
     extends BeethovenBuild(
-      new SystolicArrayChiselConfig(systolicArrayDim = 8, dataWidthBytes = 2),
+      new SystolicArrayChiselConfig(1),
       platform = new AWSF2Platform,
       buildMode = BuildMode.Simulation
     )

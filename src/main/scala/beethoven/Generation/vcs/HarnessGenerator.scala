@@ -114,12 +114,14 @@ object HarnessGenerator {
            |  end
            |
            |  initial begin:a2
+           |`ifdef ENABLE_TRACE
            |`ifndef ICARUS
            |    $$vcdplusfile("BeethovenTrace.vpd");
            |`endif
            |    $$dumpvars(0, top);
            |`ifndef ICARUS
            |    $$vcdpluson;
+           |`endif
            |`endif
            |    $$init_input_signals(clock, $reset_name, ${inputs
             .map(_.last)
@@ -129,12 +131,16 @@ object HarnessGenerator {
            |  end
            |
            |  always @(negedge clock) begin:a3
+           |`ifdef ENABLE_TRACE
            |    if (!dump_reg) begin
            |      dump_reg = 1'b1;
            |      $$dumpon;
            |    end
+           |`endif
            |    $$tick();
+           |`ifdef ENABLE_TRACE
            |    $$dumpflush;
+           |`endif
            |  end
            |
            |  initial begin:a4

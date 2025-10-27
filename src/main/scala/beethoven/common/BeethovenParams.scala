@@ -85,7 +85,8 @@ case class BlackboxBuilderCustom(
       BeethovenIOInterface[_ <: AccelCommand, _ <: AccelResponse]
     ],
     sourcePath: os.Path,
-    externalDependencies: Option[Seq[os.Path]] = None
+    externalDependencies: Option[Seq[os.Path]] = None,
+    verilogMacroParams: Map[String, Any] = Map.empty
 ) extends ModuleConstructor
 
 case class BlackboxBuilderRocc() extends ModuleConstructor

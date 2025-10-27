@@ -2,7 +2,11 @@ package systolic.verilog
 import beethoven._
 import chisel3._
 import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2Platform
-import dataclass.data
+import systolic._
+import systolic.Constants.systolic_array_dim
+import systolic.Constants.data_width_bits
+import systolic.Constants.int_bits
+import systolic.Constants.frac_bits
 
 class SystolicArrayCmd extends AccelCommand("matmul") {
   val wgt_addr = UInt(64.W)
@@ -11,10 +15,10 @@ class SystolicArrayCmd extends AccelCommand("matmul") {
   val inner_dimension = UInt(20.W)
 }
 
-class SystolicArrayConfig(systolicArrayDim: Int, dataWidthBytes: Int)
+class SystolicArrayConfig(nCores: Int)
     extends AcceleratorConfig(
       AcceleratorSystemConfig(
-        nCores = 1,
+        nCores = nCores,
         name = "SystolicArrayCore",
         moduleConstructor = new BlackboxBuilderCustom(
           Seq(
@@ -23,7 +27,7 @@ class SystolicArrayConfig(systolicArrayDim: Int, dataWidthBytes: Int)
               EmptyAccelResponse()
             )
           ),
-          os.pwd / "src" / "test" / "resources" / "systolic",
+          sourcePath = os.pwd / "src" / "test" / "resources" / "systolic",
           externalDependencies = {
             val src_dir = os.pwd / "src" / "test" / "resources" / "systolic"
             Some(
@@ -33,20 +37,26 @@ class SystolicArrayConfig(systolicArrayDim: Int, dataWidthBytes: Int)
                 src_dir / "SystolicArray.v"
               )
             )
-          }
+          },
+          verilogMacroParams = Map(
+            "SYSTOLIC_ARRAY_DIM" -> systolic_array_dim,
+            "DATA_WIDTH_BITS" -> data_width_bits,
+            "INT_BITS" -> int_bits,
+            "FRAC_BITS" -> frac_bits
+          )
         ),
         memoryChannelConfig = List(
           ReadChannelConfig(
             "weights",
-            dataBytes = dataWidthBytes * systolicArrayDim
+            dataBytes = Constants.data_width_bytes * Constants.systolic_array_dim
           ),
           ReadChannelConfig(
             "activations",
-            dataBytes = dataWidthBytes * systolicArrayDim
+            dataBytes = Constants.data_width_bytes * Constants.systolic_array_dim
           ),
           WriteChannelConfig(
             "vec_out",
-            dataBytes = dataWidthBytes * systolicArrayDim
+            dataBytes = Constants.data_width_bytes * Constants.systolic_array_dim
           )
         )
       )
@@ -54,7 +64,7 @@ class SystolicArrayConfig(systolicArrayDim: Int, dataWidthBytes: Int)
 
 object SystolicArrayConfig
     extends BeethovenBuild(
-      new SystolicArrayConfig(systolicArrayDim = 8, dataWidthBytes = 2),
+      new SystolicArrayConfig(1),
       platform = new AWSF2Platform,
       buildMode = BuildMode.Simulation
     )
