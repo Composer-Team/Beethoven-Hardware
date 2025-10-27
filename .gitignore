@@ -16,3 +16,6 @@ sed_script.sed
 .*
 a.out
 build/
+project/
+.idea/
+build/
