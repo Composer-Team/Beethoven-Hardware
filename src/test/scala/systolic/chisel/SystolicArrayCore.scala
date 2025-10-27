@@ -4,6 +4,7 @@ import beethoven.common._
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
+import systolic.Constants.data_width_bytes
 
 class SystolicArrayCore(dim: Int)(implicit p: Parameters) extends AcceleratorCore {
   val io = BeethovenIO(new SystolicArrayCmd(), EmptyAccelResponse())
@@ -16,9 +17,9 @@ class SystolicArrayCore(dim: Int)(implicit p: Parameters) extends AcceleratorCor
   weights_req.valid := cmd_fire
   activations_req.valid := cmd_fire
 
-  output_req.bits.len := 2.U * (dim * dim).U
-  weights_req.bits.len := 2.U * dim.U * io.req.bits.inner_dimension
-  activations_req.bits.len := 2.U * dim.U * io.req.bits.inner_dimension
+  output_req.bits.len := data_width_bytes.U * (dim * dim).U
+  weights_req.bits.len := data_width_bytes.U * dim.U * io.req.bits.inner_dimension
+  activations_req.bits.len := data_width_bytes.U * dim.U * io.req.bits.inner_dimension
 
   weights_req.bits.addr := Address(io.req.bits.wgt_addr)
   activations_req.bits.addr := Address(io.req.bits.act_addr)
