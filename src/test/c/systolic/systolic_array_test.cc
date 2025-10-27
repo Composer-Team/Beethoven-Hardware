@@ -26,9 +26,12 @@ int main() {
   assert(DATA_WIDTH_BYTES == 2);
 
   // allocate memory for the accelerator
-  auto activations = handle.malloc(sizeof(int16_t) * SYSTOLIC_ARRAY_DIM * inner_dimension);
-  auto weights = handle.malloc(sizeof(int16_t) * SYSTOLIC_ARRAY_DIM * inner_dimension);
-  auto outputs = handle.malloc(sizeof(int16_t) * SYSTOLIC_ARRAY_DIM * SYSTOLIC_ARRAY_DIM);
+  auto activations =
+      handle.malloc(sizeof(int16_t) * SYSTOLIC_ARRAY_DIM * inner_dimension);
+  auto weights =
+      handle.malloc(sizeof(int16_t) * SYSTOLIC_ARRAY_DIM * inner_dimension);
+  auto outputs =
+      handle.malloc(sizeof(int16_t) * SYSTOLIC_ARRAY_DIM * SYSTOLIC_ARRAY_DIM);
 
   // random number generation
   std::random_device rd;
@@ -50,11 +53,19 @@ int main() {
   assert(fixp_to_fp(fp_to_fixp(0.5)) == 0.5);
   assert(fixp_to_fp(fp_to_fixp(-8)) == -8);
 
-  // initialize arrays
+  // initialize arrays like usual
+  // MINUTIAE: You _might_ notice that host_act is **INCORRECTLY** indexed.
+  // Since the inputs are streamed sideways from the array (column-major), it
+  // should indexed by (i + SYSTOLIC_ARRAY_DIM * j). Alternatively we could
+  // store in the typical (row-major) fashion and transpose the matrix in
+  // memory. This would make this explanatory example more complicated than it
+  // needs to be so we're transposing in-place for the C++ golden-model.
   for (int i = 0; i < inner_dimension; ++i) {
     for (int j = 0; j < SYSTOLIC_ARRAY_DIM; ++j) {
-      host_act[i * SYSTOLIC_ARRAY_DIM + j] = fp_to_fixp(gold_act[i * SYSTOLIC_ARRAY_DIM + j] = dist(eng));
-      host_wgt[i * SYSTOLIC_ARRAY_DIM + j] = fp_to_fixp(gold_wgt[i * SYSTOLIC_ARRAY_DIM + j] = dist(eng));
+      host_act[i * SYSTOLIC_ARRAY_DIM + j] =
+          fp_to_fixp(gold_act[i * SYSTOLIC_ARRAY_DIM + j] = dist(eng));
+      host_wgt[i * SYSTOLIC_ARRAY_DIM + j] =
+          fp_to_fixp(gold_wgt[i * SYSTOLIC_ARRAY_DIM + j] = dist(eng));
     }
   }
 
@@ -63,12 +74,15 @@ int main() {
   for (int i = 0; i < SYSTOLIC_ARRAY_DIM; ++i) {
     for (int j = 0; j < SYSTOLIC_ARRAY_DIM; ++j) {
       for (int k = 0; k < inner_dimension; ++k) {
-        gold_out[i * SYSTOLIC_ARRAY_DIM + j] += gold_act[k * SYSTOLIC_ARRAY_DIM + i] * gold_wgt[k * SYSTOLIC_ARRAY_DIM + j];
+        gold_out[i * SYSTOLIC_ARRAY_DIM + j] +=
+            gold_act[k * SYSTOLIC_ARRAY_DIM + i] *
+            gold_wgt[k * SYSTOLIC_ARRAY_DIM + j];
       }
     }
   }
 
-  // move the data over to the accelerator
+  // move the data over to the accelerator - in simulation/embedded platforms,
+  // this is a NOOP, for PCIE-mounted FPGAs, this triggers DMA
   handle.copy_to_fpga(activations);
   handle.copy_to_fpga(weights);
 
@@ -76,11 +90,11 @@ int main() {
   SystolicArrayCore::matmul(0, activations.getFpgaAddr(), inner_dimension,
                             outputs.getFpgaAddr(), weights.getFpgaAddr())
       .get();
-  
+
   // move the data back from the accelerator
   handle.copy_from_fpga(outputs);
 
-  // print out the outpus from the accelerator
+  // print out the outputs from the accelerator
   for (int i = 0; i < SYSTOLIC_ARRAY_DIM; ++i) {
     for (int j = 0; j < SYSTOLIC_ARRAY_DIM; ++j) {
       printf("%0.2f ", fixp_to_fp(host_out[i * SYSTOLIC_ARRAY_DIM + j]));
@@ -89,9 +103,9 @@ int main() {
   }
 
   // print out the golden model (transpose)
-  // because the accelerator outputs the matrix transpose (useful for re-using the
-  // output in subsequent matrix multiplies), we output the transpose here for
-  // comparison
+  // because the accelerator outputs the matrix transpose (useful for re-using
+  // the output in subsequent matrix multiplies), we output the transpose here
+  // for comparison
   printf("\nGOLDEN:\n");
   for (int i = 0; i < SYSTOLIC_ARRAY_DIM; ++i) {
     for (int j = 0; j < SYSTOLIC_ARRAY_DIM; ++j) {
