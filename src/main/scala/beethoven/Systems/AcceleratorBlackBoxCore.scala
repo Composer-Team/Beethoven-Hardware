@@ -450,6 +450,21 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
       ++ spr_fields ++ spd_fields)
   val allIOs_noreserved = allIOs.filter(a => !a.name.contains("__") && !a.name.contains("_rd"))
 
+  val bb_macro_params = {
+    val params = systemParams.moduleConstructor.asInstanceOf[BlackboxBuilderCustom].verilogMacroParams 
+    if (params.isEmpty) {
+      ""
+    } else {
+      "#(parameter " + params.keySet.map { pName =>
+        val v = params(pName) match {
+          case s: String => f"\"$s\""
+          case a => a.toString()
+        }
+        f"${pName}"
+      }.mkString(", ") + ")"
+    }
+  }
+
   val userBB =
     f"""
        |module ${systemParams.name} (

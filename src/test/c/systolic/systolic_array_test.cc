@@ -5,13 +5,13 @@ using namespace beethoven;
 
 // convert from sign-magnitude fixed-point to floating point
 double fixp_to_fp(int16_t a) {
-  auto f = double(a & 0x7FFF) / (1 << 8);
+  auto f = double(a & 0x7FFF) / (1 << FRAC_BITS);
   return (a & 0x8000) ? -f : f;
 }
 
 // inverse of the previous function
 double fp_to_fixp(double a) {
-  int16_t f = abs(a) * (1 << 8);
+  int16_t f = abs(a) * (1 << FRAC_BITS);
   if (a < 0) {
     f |= 0x8000;
   }
@@ -20,14 +20,15 @@ double fp_to_fixp(double a) {
 
 int main() {
   fpga_handle_t handle;
-  // 8 x 8 systolic array
-  // problem size
   int inner_dimension = 1;
 
+  // this testbench relies on uint16_t...
+  assert(DATA_WIDTH_BYTES == 2);
+
   // allocate memory for the accelerator
-  auto activations = handle.malloc(sizeof(int16_t) * 8 * inner_dimension);
-  auto weights = handle.malloc(sizeof(int16_t) * 8 * inner_dimension);
-  auto outputs = handle.malloc(sizeof(int16_t) * 8 * 8);
+  auto activations = handle.malloc(sizeof(int16_t) * SYSTOLIC_ARRAY_DIM * inner_dimension);
+  auto weights = handle.malloc(sizeof(int16_t) * SYSTOLIC_ARRAY_DIM * inner_dimension);
+  auto outputs = handle.malloc(sizeof(int16_t) * SYSTOLIC_ARRAY_DIM * SYSTOLIC_ARRAY_DIM);
 
   // random number generation
   std::random_device rd;
@@ -40,9 +41,9 @@ int main() {
           *host_out = (int16_t *)outputs.getHostAddr();
 
   // allocate arrays for golden model
-  float *gold_act = new float[inner_dimension * 8];
-  float *gold_wgt = new float[inner_dimension * 8];
-  float *gold_out = new float[8 * 8];
+  float *gold_act = new float[inner_dimension * SYSTOLIC_ARRAY_DIM];
+  float *gold_wgt = new float[inner_dimension * SYSTOLIC_ARRAY_DIM];
+  float *gold_out = new float[SYSTOLIC_ARRAY_DIM * SYSTOLIC_ARRAY_DIM];
 
   // sanity checks for our fixed-point <-> floating-point conversions
   assert(fixp_to_fp(fp_to_fixp(3)) == 3);
@@ -51,18 +52,18 @@ int main() {
 
   // initialize arrays
   for (int i = 0; i < inner_dimension; ++i) {
-    for (int j = 0; j < 8; ++j) {
-      host_act[i * 8 + j] = fp_to_fixp(gold_act[i * 8 + j] = dist(eng));
-      host_wgt[i * 8 + j] = fp_to_fixp(gold_wgt[i * 8 + j] = dist(eng));
+    for (int j = 0; j < SYSTOLIC_ARRAY_DIM; ++j) {
+      host_act[i * SYSTOLIC_ARRAY_DIM + j] = fp_to_fixp(gold_act[i * SYSTOLIC_ARRAY_DIM + j] = dist(eng));
+      host_wgt[i * SYSTOLIC_ARRAY_DIM + j] = fp_to_fixp(gold_wgt[i * SYSTOLIC_ARRAY_DIM + j] = dist(eng));
     }
   }
 
   // perform golden-model matrix multiply
-  memset(gold_out, 0, sizeof(float) * 8 * 8);
-  for (int i = 0; i < 8; ++i) {
-    for (int j = 0; j < 8; ++j) {
+  memset(gold_out, 0, sizeof(float) * SYSTOLIC_ARRAY_DIM * SYSTOLIC_ARRAY_DIM);
+  for (int i = 0; i < SYSTOLIC_ARRAY_DIM; ++i) {
+    for (int j = 0; j < SYSTOLIC_ARRAY_DIM; ++j) {
       for (int k = 0; k < inner_dimension; ++k) {
-        gold_out[i * 8 + j] += gold_act[k * 8 + i] * gold_wgt[k * 8 + j];
+        gold_out[i * SYSTOLIC_ARRAY_DIM + j] += gold_act[k * SYSTOLIC_ARRAY_DIM + i] * gold_wgt[k * SYSTOLIC_ARRAY_DIM + j];
       }
     }
   }
@@ -80,9 +81,9 @@ int main() {
   handle.copy_from_fpga(outputs);
 
   // print out the outpus from the accelerator
-  for (int i = 0; i < 8; ++i) {
-    for (int j = 0; j < 8; ++j) {
-      printf("%0.2f ", fixp_to_fp(host_out[i * 8 + j]));
+  for (int i = 0; i < SYSTOLIC_ARRAY_DIM; ++i) {
+    for (int j = 0; j < SYSTOLIC_ARRAY_DIM; ++j) {
+      printf("%0.2f ", fixp_to_fp(host_out[i * SYSTOLIC_ARRAY_DIM + j]));
     }
     printf("\n");
   }
@@ -92,10 +93,10 @@ int main() {
   // output in subsequent matrix multiplies), we output the transpose here for
   // comparison
   printf("\nGOLDEN:\n");
-  for (int i = 0; i < 8; ++i) {
-    for (int j = 0; j < 8; ++j) {
+  for (int i = 0; i < SYSTOLIC_ARRAY_DIM; ++i) {
+    for (int j = 0; j < SYSTOLIC_ARRAY_DIM; ++j) {
       // print transpose
-      printf("%0.2f ", gold_out[j * 8 + i]);
+      printf("%0.2f ", gold_out[j * SYSTOLIC_ARRAY_DIM + i]);
     }
     printf("\n");
   }

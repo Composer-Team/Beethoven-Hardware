@@ -3,6 +3,7 @@ import beethoven._
 import chisel3._
 import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2Platform
 import systolic.Constants._
+import beethoven.Generation.CppGeneration
 
 class SystolicArrayCmd extends AccelCommand("matmul") {
   val wgt_addr = UInt(64.W)
@@ -36,7 +37,17 @@ class SystolicArrayChiselConfig(nCores: Int)
 
 object SystolicArrayConfig
     extends BeethovenBuild(
-      new SystolicArrayChiselConfig(1),
+      {
+        CppGeneration.addPreprocessorDefinition(
+          Seq(
+            ("DATA_WIDTH_BYTES", data_width_bytes),
+            ("FRAC_BITS", frac_bits),
+            ("INT_BITS", int_bits),
+            ("SYSTOLIC_ARRAY_DIM", systolic_array_dim)
+          )
+        )
+        new SystolicArrayChiselConfig(1)
+      },
       platform = new AWSF2Platform,
       buildMode = BuildMode.Simulation
     )

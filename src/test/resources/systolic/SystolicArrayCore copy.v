@@ -1,5 +1,5 @@
 
-module SystolicArrayCore (
+module SystolicArrayCore #(parameter SYSTOLIC_ARRAY_DIM, DATA_WIDTH_BITS, INT_BITS, FRAC_BITS) (
   input clock,
   input reset,
 
@@ -19,35 +19,36 @@ module SystolicArrayCore (
   input          activations_req_ready,
   output [33:0]  activations_req_len,
   output [63:0]  activations_req_addr_address,
-  input          weights_data_valid,
-  output         weights_data_ready,
   input          weights_inProgress,
   input          activations_inProgress,
-  input  [127:0] weights_data,
+  input          weights_data_valid,
+  output         weights_data_ready,
+  input  [(SYSTOLIC_ARRAY_DIM * DATA_WIDTH_BITS - 1):0] weights_data,
   input          activations_data_valid,
   output         activations_data_ready,
-  input  [127:0] activations_data,
+  input  [(SYSTOLIC_ARRAY_DIM * DATA_WIDTH_BITS - 1):0] activations_data,
   output         vec_out_req_valid,
   input          vec_out_req_ready,
   output [33:0]  vec_out_req_len,
-  output [63:0]  vec_out_req_addr_address,
+
+  input          write_isFlushed_0_0,
   output         vec_out_data_valid,
   input          vec_out_data_ready,
-  output [127:0] vec_out_data
+  output [(SYSTOLIC_ARRAY_DIM * DATA_WIDTH_BITS - 1):0] vec_out_data
 );
 
 wire cmd_fire = cmd_0_valid && cmd_0_ready;
 
 assign vec_out_req_valid = cmd_fire;
-assign vec_out_req_len = 2 * 8 * 8;
+assign vec_out_req_len = (SYSTOLIC_ARRAY_DIM * SYSTOLIC_ARRAY_DIM * (DATA_WIDTH_BITS / 8));
 assign vec_out_req_addr_address = cmd_0_out_addr;
 
 assign weights_req_valid = cmd_fire;
-assign weights_req_len = 2 * 8 * cmd_0_inner_dimension;
+assign weights_req_len = (DATA_WIDTH_BITS / 8) * SYSTOLIC_ARRAY_DIM * cmd_0_inner_dimension;
 assign weights_req_addr_address = cmd_0_wgt_addr;
 
 assign activations_req_valid = cmd_fire;
-assign activations_req_len = 2 * 8 * cmd_0_inner_dimension;
+assign activations_req_len = (DATA_WIDTH_BITS / 8) * SYSTOLIC_ARRAY_DIM * cmd_0_inner_dimension;
 assign activations_req_addr_address = cmd_0_act_addr;
 
 `define IDLE 0
@@ -63,7 +64,7 @@ assign resp_0_valid = state == `RESPONSE;
 
 wire sa_idle;
 
-SystolicArray sa(
+SystolicArray #(.DATA_WIDTH_BITS(DATA_WIDTH_BITS), .FRAC_BITS(FRAC_BITS), .INT_BITS(INT_BITS), .SYSTOLIC_ARRAY_DIM(SYSTOLIC_ARRAY_DIM)) sa(
   .clk(clock),
   .rst(reset),
 
@@ -97,7 +98,7 @@ always @(posedge clock) begin
         state <= `FLUSH;
       end
     end else if (state == `FLUSH) begin
-      if (vec_out_req_ready) begin
+      if (vec_out_req_ready && write_isFlushed_0_0) begin
         state <= `RESPONSE;
       end
     end else if (state == `RESPONSE) begin
@@ -107,5 +108,4 @@ always @(posedge clock) begin
     end
   end
 end
-
 endmodule

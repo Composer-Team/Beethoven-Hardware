@@ -50,19 +50,19 @@ class SystolicArrayCore(dim: Int)(implicit p: Parameters) extends AcceleratorCor
   sa_idle := sa.io.ctrl_start_ready
 
   when(state === s_idle) {
-    when (cmd_fire) {
+    when(cmd_fire) {
       state := s_go
     }
   }.elsewhen(state === s_go) {
-    when (sa_idle) {
+    when(sa_idle) {
       state := s_flush
     }
   }.elsewhen(state === s_flush) {
-    when (output_req.ready && output.isFlushed) {
+    when(output_req.ready && output.isFlushed) {
       state := s_response
     }
   }.elsewhen(state === s_response) {
-    when (io.resp.ready) {
+    when(io.resp.ready) {
       state := s_idle
     }
   }

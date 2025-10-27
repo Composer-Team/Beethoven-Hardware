@@ -7,6 +7,7 @@ import systolic.Constants.systolic_array_dim
 import systolic.Constants.data_width_bits
 import systolic.Constants.int_bits
 import systolic.Constants.frac_bits
+import beethoven.Generation.CppGeneration
 
 class SystolicArrayCmd extends AccelCommand("matmul") {
   val wgt_addr = UInt(64.W)
@@ -64,7 +65,18 @@ class SystolicArrayConfig(nCores: Int)
 
 object SystolicArrayConfig
     extends BeethovenBuild(
-      new SystolicArrayConfig(1),
+      {
+        CppGeneration.addPreprocessorDefinition(
+          Seq(
+            ("DATA_WIDTH_BYTES", Constants.data_width_bytes),
+            ("FRAC_BITS", frac_bits),
+            ("INT_BITS", int_bits),
+            ("SYSTOLIC_ARRAY_DIM", systolic_array_dim)
+          )
+        )
+
+        new SystolicArrayConfig(1)
+      },
       platform = new AWSF2Platform,
       buildMode = BuildMode.Simulation
     )
