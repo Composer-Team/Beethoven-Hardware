@@ -48,6 +48,6 @@ object SystolicArrayConfig
         )
         new SystolicArrayChiselConfig(1)
       },
-      platform = new AWSF2Platform,
-      buildMode = BuildMode.Simulation
+      platform = new KriaPlatform,
+      buildMode = BuildMode.Synthesis
     )
