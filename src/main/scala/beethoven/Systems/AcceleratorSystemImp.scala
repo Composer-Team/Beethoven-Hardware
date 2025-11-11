@@ -4,7 +4,6 @@ import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import beethoven._
 import beethoven.Floorplanning.LazyModuleImpWithSLRs.ModuleWithFloorplan
-import beethoven.Floorplanning.ResetBridge
 import beethoven.MemoryStreams.Readers.SequentialReader
 import beethoven.MemoryStreams._
 import org.chipsalliance.diplomacy.LazyModuleImp
@@ -28,7 +27,7 @@ class AcceleratorSystemImp(val outer: AcceleratorSystem)(implicit p: Parameters)
     impl
   }
 
-  cores.foreach(_.reset := ResetBridge(reset, clock, 2))
+  cores.foreach(_.reset := reset)
 
   if (p(AcceleratorSystems).length > 1 || outer.systemParams.nCores > 1) {
     // if either of these conditions holds, it makes sense to compile separately and stamp them out. Otherwise, just

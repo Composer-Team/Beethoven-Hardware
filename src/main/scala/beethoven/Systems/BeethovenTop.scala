@@ -6,8 +6,7 @@ import chisel3._
 import chisel3.util._
 import beethoven.Floorplanning.{
   ConstraintGeneration,
-  LazyModuleWithSLRs,
-  ResetBridge
+  LazyModuleWithSLRs
 }
 import beethoven._
 import beethoven.Systems.BeethovenTop._
@@ -433,7 +432,7 @@ class TopImpl(outer: BeethovenTop)(implicit p: Parameters)
       (LazyModuleWithSLRs.toplevelObjectsPerSLR.map(_._1) ++
         outer.devices.map { b: Subdevice => b.deviceId }).distinct
     val resets = devicesNeedingReset.map { a =>
-      (a, ResetBridge(childReset, clock, 4))
+      (a, childReset)
     }
     outer.devices.foreach { dev =>
       dev.module.reset := resets.find(_._1 == dev.deviceId).get._2

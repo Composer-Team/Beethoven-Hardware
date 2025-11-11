@@ -54,10 +54,7 @@ class RoccFanin(implicit p: Parameters) extends LazyModule {
       out._2.up.system_core_ids.foreach { case (sid, cores) =>
         val nCores = cores._2 - cores._1 + 1
         val master_source = Reg(Vec(nCores, UInt(log2Up(ins.length).W)))
-        val lookup_valid: Vec[Bool] = Reg(Vec(nCores, Bool()))
-        when(reset.asBool) {
-          lookup_valid.foreach(_ := false.B)
-        }
+        val lookup_valid: Vec[Bool] = RegInit(Vec(nCores, Bool()), VecInit(Seq.fill(nCores)(false.B)))
         val sys_match = out._1.req.bits.getSystemID === sid.U
         val core_adj = out._1.req.bits.getCoreID - cores._1.U
 

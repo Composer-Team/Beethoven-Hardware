@@ -37,9 +37,9 @@ class AXIFrontBusProtocolFastMem extends AXIFrontBusProtocol(nClocks = 2) {
       val crosses = p_conf(FastMemClockCross)
       crosses.foreach { cross =>
         cross.module.io.clock_src := clocks(0)
-        cross.module.io.reset_src := !resets(0)
+        cross.module.io.reset_src := (!resets(0).asBool).asAsyncReset
         cross.module.io.clock_dst := clocks(1)
-        cross.module.io.reset_dst := !resets(1)
+        cross.module.io.reset_dst := (!resets(1).asBool).asAsyncReset
       }
     }
     p_conf

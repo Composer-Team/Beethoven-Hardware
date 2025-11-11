@@ -36,7 +36,7 @@ case object DMANodeKey extends Field[Option[TLIdentityNode]]
 
 case object ClockKey extends Field[Seq[Clock]]
 
-case object ResetKey extends Field[Seq[Bool]]
+case object ResetKey extends Field[Seq[Reset]]
 
 case object BeethovenInternalMemKey extends Field[Seq[AXI4Node]]
 

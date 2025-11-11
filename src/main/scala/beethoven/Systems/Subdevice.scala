@@ -1,6 +1,6 @@
 package beethoven.Systems
 
-import beethoven.Floorplanning.{DeviceContext, ResetBridge}
+import beethoven.Floorplanning.{DeviceContext}
 import beethoven.Protocol.RoCC.{RoccBuffer, RoccFanout, RoccIdentityNode}
 import beethoven.Protocol.tilelink.TLSupportChecker
 import beethoven._
@@ -86,7 +86,7 @@ class Subdevice(val deviceId: Int)(implicit p: Parameters) extends LazyModule {
 
     DeviceContext.currentDevice = Some(deviceId + 1)
     submodules.foreach { sm =>
-      sm.module.reset := ResetBridge(reset, clock, 2)
+      sm.module.reset := reset
     }
   }
 }
