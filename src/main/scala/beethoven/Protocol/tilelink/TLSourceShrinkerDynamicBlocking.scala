@@ -10,9 +10,9 @@ import chisel3.VecInit
 import org.chipsalliance.diplomacy._
 import org.chipsalliance.diplomacy.tilelink._
 import org.chipsalliance.diplomacy.util._
+import dataclass.data
 
-class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters)
-    extends LazyModule {
+class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters) extends LazyModule {
   require(maxNIDs > 0)
 
   private def noShrinkRequired(client: TLClientPortParameters): Boolean =
@@ -50,9 +50,7 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters)
     },
     managerFn = { mp =>
       mp.v1copy(managers =
-        mp.managers.map(m =>
-          m.v1copy(fifoId = if (maxNIDs == 1) Some(0) else m.fifoId)
-        )
+        mp.managers.map(m => m.v1copy(fifoId = if (maxNIDs == 1) Some(0) else m.fifoId))
       )
     }
   ) {
@@ -84,17 +82,10 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters)
           Reg(Vec(maxNIDs, UInt(width = log2Up(edgeIn.client.endSourceId).W)))
 
         val allocated = RegInit(VecInit(Seq.fill(maxNIDs)(false.B)))
-        val beatsLeftPerAllocation = Reg(
-          Vec(
-            maxNIDs,
-            UInt(
-              log2Up(
-                (edgeOut.manager.maxTransfer / edgeOut.manager.beatBytes) + 1
-              ).W
-            )
-          )
-        )
-        val d_last = beatsLeftPerAllocation(out.d.bits.source) === 1.U
+        val max_n_beats = edgeOut.manager.maxTransfer / edgeOut.manager.beatBytes
+        val beatCountWidth = log2Up(max_n_beats)
+        val beatsLeftPerAllocation =
+          RegInit(Vec(maxNIDs, UInt(beatCountWidth.W)), VecInit(Seq.fill(maxNIDs)(0.U)))
         val nextFree = PriorityEncoder(~allocated)
         val full = allocated.andR
         val a_in_valid = RegInit(false.B)
@@ -104,42 +95,51 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters)
 
         // need to count beats in the transaction because we might follow two transactions back to back with each other
 
-        val handlingLongWriteTx = RegInit(false.B)
+        val handlingLongWriteTx = RegInit(Bool(), false.B)
         val prevSourceMap = Reg(UInt(out.params.sourceBits.W))
         val prevSource = Reg(UInt(in.params.sourceBits.W))
         val singleBeatLgSz = log2Up(in.a.bits.data.getWidth / 8)
-        val isTxContinuation =
-          handlingLongWriteTx && prevSource === in.a.bits.source
-        val longBeatCount =
-          Reg(UInt(log2Up(platform.prefetchSourceMultiplicity).W))
 
-        val canAcceptOnA = Mux(
-          isTxContinuation,
-          true.B,
-          !full && ((a_in_valid && out.a.fire) || !a_in_valid)
+        in.a.ready := handlingLongWriteTx || (
+          !full && (out.a.fire || !a_in_valid)
         )
-        in.a.ready := canAcceptOnA
-        val longBeatExp = Reg(
-          UInt(log2Up(Math.max(63, platform.prefetchSourceMultiplicity - 1)).W)
+        val longBeatExp, longBeatCount = RegInit(
+          UInt(log2Up(Math.max(63, platform.prefetchSourceMultiplicity - 1)).W),
+          0.U
         )
+
+        // this HAS to be the case, otherwise we risk deadlock. But I think it's also just part of the
+        // TileLink standard that requests must be provided on contiguous beats.
+        // see page 20 of TileLink standard v1.9.3
+        assert(!handlingLongWriteTx || !in.a.valid || prevSource === in.a.bits.source)
+
+        when(out.a.fire && !in.a.fire) {
+          a_in_valid := false.B
+        }
+
         when(in.a.fire) {
           a_in := in.a.bits
           a_in_valid := true.B
           prevSource := in.a.bits.source
-          when(isTxContinuation) {
+          when(handlingLongWriteTx) {
             a_in.source := prevSourceMap
             longBeatCount := longBeatCount + 1.U
             when(longBeatCount === longBeatExp) {
               handlingLongWriteTx := false.B
             }
           }.otherwise {
+            val data_width = in.a.bits.data.getWidth / 8
+            val lognbeats = in.a.bits.size - log2Up(data_width).U
+            // shift out to give us # of beats
+            val nbeats = 1.U << lognbeats
             when(
               in.a.bits.opcode === TLMessages.PutFullData && in.a.bits.size > singleBeatLgSz.U
             ) {
               handlingLongWriteTx := true.B
-              longBeatExp := (1.U << (in.a.bits.size - log2Up(
-                in.a.bits.data.getWidth / 8
-              ).U)).asUInt - 1.U
+              // size gives us log2 #ofbytes
+              // subtract by databus width to give us log2 #ofbeats
+
+              longBeatExp := nbeats
               longBeatCount := 1.U
             }.otherwise {
               handlingLongWriteTx := false.B
@@ -149,18 +149,15 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters)
             a_in.source := nextFree
             beatsLeftPerAllocation(nextFree) :=
               Mux(
-                in.a.bits.opcode === 0.U,
-                1.U, // if write then we only expect 1 write response
-                1.U << (in.a.bits.size - log2Up(edgeOut.manager.beatBytes).U)
+                in.a.bits.opcode === TLMessages.PutFullData,
+                0.U, // if write then we only expect 1 write response
+                nbeats - 1.U
               ) // if read, then many responses
             assert(
               in.a.bits.size >= log2Up(edgeOut.manager.beatBytes).U,
               "TLSourceShrinker2: Request too small"
             )
           }
-        }
-        when(out.a.fire) {
-          a_in_valid := canAcceptOnA && in.a.valid
         }
 
         val d_in = Reg(in.d.bits.cloneType)
@@ -172,14 +169,12 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters)
           d_in_valid := false.B
         }
         when(out.d.fire) {
+          val beatsLeft = beatsLeftPerAllocation(out.d.bits.source)
           d_in := out.d.bits
           d_in_valid := true.B
           d_in.source := sourceOut2InMap(out.d.bits.source)
-          beatsLeftPerAllocation(out.d.bits.source) := beatsLeftPerAllocation(
-            out.d.bits.source
-          ) - 1.U
-          assert(beatsLeftPerAllocation(out.d.bits.source) =/= 0.U)
-          when(d_last) {
+          beatsLeftPerAllocation(out.d.bits.source) := beatsLeft - 1.U
+          when(beatsLeft === 0.U) {
             allocated(out.d.bits.source) := false.B
           }
         }

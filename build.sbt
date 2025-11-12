@@ -23,7 +23,7 @@ This / scalaVersion := myScalaVersion
 
 lazy val beethoven = (project in file(".")).settings(
   name := "beethoven-hardware",
-  version := "0.1.4-dev16",
+  version := "0.1.4-dev21",
   organization := "edu.duke.cs.apex",
   libraryDependencies ++= Seq(
     "org.chipsalliance" %% "chisel" % chiselVersion,
