@@ -117,10 +117,10 @@ wire [0:0] M00_AXI_arvalid;
 wire [0:0] M00_AXI_rready;
 
 reg clock = 0;
-reg RESETn = 0;
+reg ARESETn = 0;
 BeethovenTop top(
   .clock(clock),
-  .RESETn(RESETn),
+  .ARESETn(ARESETn),
   .S00_AXI_awid(S00_AXI_awid),
   .S00_AXI_awaddr(S00_AXI_awaddr),
   .S00_AXI_awlen(S00_AXI_awlen),
@@ -246,7 +246,7 @@ initial begin:a2
   `ifndef ICARUS
     $vcdpluson;
   `endif
-  $init_input_signals(clock, RESETn, S00_AXI_awid, S00_AXI_awaddr, S00_AXI_awlen, S00_AXI_awsize, S00_AXI_awburst, S00_AXI_awlock, S00_AXI_awcache, S00_AXI_awprot, S00_AXI_awregion, S00_AXI_awqos, S00_AXI_awvalid, S00_AXI_wdata, S00_AXI_wstrb, S00_AXI_wlast, S00_AXI_wvalid, S00_AXI_bready, S00_AXI_arid, S00_AXI_araddr, S00_AXI_arlen, S00_AXI_arsize, S00_AXI_arburst, S00_AXI_arlock, S00_AXI_arcache, S00_AXI_arprot, S00_AXI_arregion, S00_AXI_arqos, S00_AXI_arvalid, S00_AXI_rready, dma_awaddr, dma_awlen, dma_awsize, dma_awburst, dma_awlock, dma_awcache, dma_awprot, dma_awregion, dma_awqos, dma_awvalid, dma_wdata, dma_wstrb, dma_wlast, dma_wvalid, dma_bready, dma_araddr, dma_arlen, dma_arsize, dma_arburst, dma_arlock, dma_arcache, dma_arprot, dma_arregion, dma_arqos, dma_arvalid, dma_rready, M00_AXI_awready, M00_AXI_wready, M00_AXI_bid, M00_AXI_bresp, M00_AXI_bvalid, M00_AXI_arready, M00_AXI_rid, M00_AXI_rdata, M00_AXI_rresp, M00_AXI_rlast, M00_AXI_rvalid);
+  $init_input_signals(clock, ARESETn, S00_AXI_awid, S00_AXI_awaddr, S00_AXI_awlen, S00_AXI_awsize, S00_AXI_awburst, S00_AXI_awlock, S00_AXI_awcache, S00_AXI_awprot, S00_AXI_awregion, S00_AXI_awqos, S00_AXI_awvalid, S00_AXI_wdata, S00_AXI_wstrb, S00_AXI_wlast, S00_AXI_wvalid, S00_AXI_bready, S00_AXI_arid, S00_AXI_araddr, S00_AXI_arlen, S00_AXI_arsize, S00_AXI_arburst, S00_AXI_arlock, S00_AXI_arcache, S00_AXI_arprot, S00_AXI_arregion, S00_AXI_arqos, S00_AXI_arvalid, S00_AXI_rready, dma_awaddr, dma_awlen, dma_awsize, dma_awburst, dma_awlock, dma_awcache, dma_awprot, dma_awregion, dma_awqos, dma_awvalid, dma_wdata, dma_wstrb, dma_wlast, dma_wvalid, dma_bready, dma_araddr, dma_arlen, dma_arsize, dma_arburst, dma_arlock, dma_arcache, dma_arprot, dma_arregion, dma_arqos, dma_arvalid, dma_rready, M00_AXI_awready, M00_AXI_wready, M00_AXI_bid, M00_AXI_bresp, M00_AXI_bvalid, M00_AXI_arready, M00_AXI_rid, M00_AXI_rdata, M00_AXI_rresp, M00_AXI_rlast, M00_AXI_rvalid);
   $init_output_signals(S00_AXI_awready, S00_AXI_wready, S00_AXI_bid, S00_AXI_bresp, S00_AXI_bvalid, S00_AXI_arready, S00_AXI_rid, S00_AXI_rdata, S00_AXI_rresp, S00_AXI_rlast, S00_AXI_rvalid, dma_awready, dma_wready, dma_bresp, dma_bvalid, dma_arready, dma_rdata, dma_rresp, dma_rlast, dma_rvalid, M00_AXI_awid, M00_AXI_awaddr, M00_AXI_awlen, M00_AXI_awsize, M00_AXI_awburst, M00_AXI_awlock, M00_AXI_awcache, M00_AXI_awprot, M00_AXI_awregion, M00_AXI_awqos, M00_AXI_awvalid, M00_AXI_wdata, M00_AXI_wstrb, M00_AXI_wlast, M00_AXI_wvalid, M00_AXI_bready, M00_AXI_arid, M00_AXI_araddr, M00_AXI_arlen, M00_AXI_arsize, M00_AXI_arburst, M00_AXI_arlock, M00_AXI_arcache, M00_AXI_arprot, M00_AXI_arregion, M00_AXI_arqos, M00_AXI_arvalid, M00_AXI_rready);
   $init_structures;
 end
@@ -502,20 +502,20 @@ endtask
 integer i;
 integer k;
 initial begin:a1
-  // reset logic BEGIN
-  RESETn = 0;
+  // areset logic BEGIN
+  ARESETn = 0;
   init_everything_low();
   for (i=0;i<100;i=i+1) begin
     # 1.0;
     clock = ~clock;
   end
-  RESETn = 1;
+  ARESETn = 1;
   for (i=0;i<100;i=i+1) begin
     #1
     clock = ~clock;
   end
   #1
-  // reset logic END
+  // areset logic END
   for (k = 0; k < 60; k = k + 1) begin
     enqueue_write(16'hDE00, 32'hDEADBEEF);
   end

@@ -7,7 +7,7 @@
 #   - output_dir - this should be an absolute path
 #   - part_name
 #   - board_part
-#   - verilog_file - this should have a top_level 'clock', 'reset' (active high), a 128b AXI4 master and slave with
+#   - verilog_file - this should have a top_level 'clock', 'areset' (active high), a 128b AXI4 master and slave with
 #                       the prefixes 'M00_AXI_' and 'S00_AXI_', respectively
 #   - top_module - the name of the top module
 
@@ -37,7 +37,7 @@ create_bd_design "design_1"
 startgroup
 create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e soc
 endgroup
-apply_bd_automation -rule xilinx.com:bd_rule:zynq_ultra_ps_e -config {apply_board_preset "1" } [get_bd_cells soc]
+apply_bd_automation -rule xilinx.com:bd_rule:zynq_ultra_ps_e -config {apply_board_pareset "1" } [get_bd_cells soc]
 set_property -dict [list \\
     CONFIG.PSU__USE__M_AXI_GP1 {0} \\
     CONFIG.PSU__USE__S_AXI_GP2 {1} \\
@@ -76,8 +76,8 @@ apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { \\
   master_apm {0}} [get_bd_intf_pins soc/S_AXI_HP0_FPD]
 
 apply_bd_automation -rule xilinx.com:bd_rule:clkrst -config { Clk {/soc/pl_clk1} } [get_bd_pins top/clock_1]
-connect_bd_net [get_bd_pins top/RESETn] [get_bd_pins rst_soc_99M/peripheral_aresetn]
-connect_bd_net [get_bd_pins top/RESETn_1] [get_bd_pins rst_soc_99M/peripheral_aresetn]
+connect_bd_net [get_bd_pins top/ARESETn] [get_bd_pins rst_soc_99M/peripheral_aresetn]
+connect_bd_net [get_bd_pins top/ARESETn_1] [get_bd_pins rst_soc_99M/peripheral_aresetn]
 
 # Make wrapper and setup build environment
 make_wrapper -files [get_files [exec find ${output_dir} -name "design_1.bd" ] ] -top
@@ -86,7 +86,7 @@ set_property top design_1_wrapper [current_fileset]
 update_compile_order -fileset sources_1
 
 # Make it so that we can just run synth_design and not have to deal with out-of-context IPs
-reset_target all [get_files $my_bd]
+areset_target all [get_files $my_bd]
 export_ip_user_files -of_objects [get_files $my_bd] -sync -no_script -force -quiet
 set_property synth_checkpoint_mode None [get_files $my_bd]
 generate_target all [get_files $my_bd]

@@ -35,8 +35,8 @@ object AnnotateXilinxInterface {
         s"  \\1 \\2\\3,\\n  \\1 $prefix/g"
 
     val ensure_clock_input = "s/\\n *clock/\\n  input clock/"
-    val ensure_reset_input =
-      Seq("s/\\n *RESETn/\\n  input RESETn/", "s/\\n *reset/\\n  input reset/")
+    val ensure_areset_input =
+      Seq("s/\\n *ARESETn/\\n  input ARESETn/", "s/\\n *areset/\\n  input areset/")
     val add_annotation_cmd =
       s"s/\\n( *)(input|output) *($width_info) *${prefix}_([a-zA-Z_]*),/" +
         s"\\n  (\\* X_INTERFACE_INFO = \"$interfaceName $busName \\4\" \\*\\)\\0/g"
@@ -52,7 +52,7 @@ s/ *(input|output)(.*)(dma)(.*),\n *(dma)/  \1\2\3\4,\n  \1\2\5/ */
 //     then, remove the repeated modules from the source
 //     join sedCMds with ;
     perform_sed(Seq(copy_directionality_info_cmd, copy_directionality_info_cmd_1wide), fname)
-    perform_sed(ensure_reset_input ++ Seq(ensure_clock_input), fname)
+    perform_sed(ensure_areset_input ++ Seq(ensure_clock_input), fname)
     perform_sed(Seq(add_annotation_cmd, add_annotation_cmd_1wide), fname)
     (os.pwd / "tmp.v").toString()
   }

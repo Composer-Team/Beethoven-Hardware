@@ -135,7 +135,7 @@ object Shell {
          |`endif
          |`include "cl_id_defines.vh"
          |`define CL_NAME cl_beethoven_top
-         |//Highly recommeneded.  For lib FIFO block, uses less async reset (take advantage of
+         |//Highly recommeneded.  For lib FIFO block, uses less async areset (take advantage of
          |// FPGA flop init capability).  This will help with routing resources.
          |`define FPGA_LESS_RST
          |`define SH_SDA
@@ -342,7 +342,7 @@ object Shell {
          |  logic [31:0]  ddr_sh_stat_rdata_q;
          |  logic  [7:0]  ddr_sh_stat_int_q;
          |
-         |  // !!NOTE!!: Tie SH_DDR resets to rst_main_n ONLY!!
+         |  // !!NOTE!!: Tie SH_DDR aresets to rst_main_n ONLY!!
          |  logic         ddr_sync_rst_n;
          |
          |  xpm_cdc_async_rst CDC_ASYNC_RST_N_DDR
@@ -531,7 +531,7 @@ object Shell {
          |//    .hbm_axi4_bus           (lcl_cl_sh_ddrb           ),
          |//    .hbm_stat_bus           (hbm_stat_cfg_bus         ),
          |//    .hbm_kern_cfg_bus       (hbm_kern_cfg_bus         ),
-         |//    .i_hbm_apb_preset_n_1   (hbm_apb_preset_n_1       ),
+         |//    .i_hbm_apb_pareset_n_1   (hbm_apb_pareset_n_1       ),
          |//    .o_hbm_apb_paddr_1      (hbm_apb_paddr_1          ),
          |//    .o_hbm_apb_pprot_1      (hbm_apb_pprot_1          ),
          |//    .o_hbm_apb_psel_1       (hbm_apb_psel_1           ),
@@ -542,7 +542,7 @@ object Shell {
          |//    .o_hbm_apb_pready_1     (hbm_apb_pready_1         ),
          |//    .o_hbm_apb_prdata_1     (hbm_apb_prdata_1         ),
          |//    .o_hbm_apb_pslverr_1    (hbm_apb_pslverr_1        ),
-         |//    .i_hbm_apb_preset_n_0   (hbm_apb_preset_n_0       ),
+         |//    .i_hbm_apb_pareset_n_0   (hbm_apb_pareset_n_0       ),
          |//    .o_hbm_apb_paddr_0      (hbm_apb_paddr_0          ),
          |//    .o_hbm_apb_pprot_0      (hbm_apb_pprot_0          ),
          |//    .o_hbm_apb_psel_0       (hbm_apb_psel_0           ),
@@ -628,7 +628,7 @@ object Shell {
          |
          |  BeethovenTop (
          |    .clock(gen_clk_main_a0),
-         |    .RESETn(gen_rst_main_n),
+         |    .ARESETn(gen_rst_main_n),
          |    $ddr_connects,
          |    $dma_connects,
          |    $ocl_connects);
@@ -647,7 +647,7 @@ object Shell {
          |//Put module name of the CL design here.  This is used to instantiate in top.sv
          |`define CL_NAME cl_beethoven_top
          |
-         |//Highly recommeneded.  For lib FIFO block, uses less async reset (take advantage of
+         |//Highly recommeneded.  For lib FIFO block, uses less async areset (take advantage of
          |// FPGA flop init capability).  This will help with routing resources.
          |`define FPGA_LESS_RST
          |

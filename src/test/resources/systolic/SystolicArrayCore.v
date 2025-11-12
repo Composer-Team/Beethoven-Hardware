@@ -1,7 +1,7 @@
 
 module SystolicArrayCore #(parameter SYSTOLIC_ARRAY_DIM, DATA_WIDTH_BITS, INT_BITS, FRAC_BITS) (
   input clock,
-  input reset,
+  input areset,
 
   input          cmd_0_valid,
   output         cmd_0_ready,
@@ -66,7 +66,7 @@ wire sa_idle;
 
 SystolicArray #(.DATA_WIDTH_BITS(DATA_WIDTH_BITS), .FRAC_BITS(FRAC_BITS), .INT_BITS(INT_BITS), .SYSTOLIC_ARRAY_DIM(SYSTOLIC_ARRAY_DIM)) sa(
   .clk(clock),
-  .rst(reset),
+  .rst(areset),
 
   .act_in(activations_data),
   .act_valid(activations_data_valid),
@@ -86,7 +86,7 @@ SystolicArray #(.DATA_WIDTH_BITS(DATA_WIDTH_BITS), .FRAC_BITS(FRAC_BITS), .INT_B
 );
 
 always @(posedge clock) begin
-  if (reset) begin
+  if (areset) begin
     state <= `IDLE;
   end else begin
     if (state == `IDLE) begin

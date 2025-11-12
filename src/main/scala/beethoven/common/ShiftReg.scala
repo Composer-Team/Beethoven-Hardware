@@ -14,27 +14,27 @@ import org.chipsalliance.diplomacy.ValName
 class ShiftReg(
     n: Int,
     gen: UInt,
-    resetVal: Option[UInt] = None,
+    aresetVal: Option[UInt] = None,
     with_enable: Boolean = false,
     allow_fpga_shreg: Boolean = true
 ) extends BlackBox {
   val io = IO(new Bundle {
     val clock = Input(Bool())
-    val reset = if (resetVal.isDefined) Some(Input(Bool())) else None
+    val areset = if (aresetVal.isDefined) Some(Input(Bool())) else None
     val enable = if (with_enable) Some(Input(Bool())) else None
     val in = Input(gen.cloneType)
     val out = Output(gen.cloneType)
   })
 
-  val (resetString, resetName, reset_code_sig, reset_sig) = resetVal match {
+  val (aresetString, aresetName, areset_code_sig, areset_sig) = aresetVal match {
     case Some(a) =>
       (
         (0 until n)
           .map { i => f"${space}shift_reg[${i}] <= ${a.asUInt.litValue};" }
           .mkString("\n"),
         a.asUInt.litValue.toString,
-        "reset",
-        "\n    input reset,"
+        "areset",
+        "\n    input areset,"
       )
     case None => ("", "_", "1'b0", "")
   }
@@ -45,7 +45,7 @@ class ShiftReg(
   }
 
   override def desiredName: String =
-    f"ShiftReg${gen.getClass.getName.split("\\.").last}_l${n}_w${width}_r${resetName}_e${with_enable}"
+    f"ShiftReg${gen.getClass.getName.split("\\.").last}_l${n}_w${width}_r${aresetName}_e${with_enable}"
 
   val width = gen.getWidth
   os.makeDir.all(os.pwd / "SRs")
@@ -67,16 +67,16 @@ class ShiftReg(
       path,
       f"""
          |module $desiredName (
-         |  input clock,$reset_sig$enable_sig
+         |  input clock,$areset_sig$enable_sig
          |  input$range in,
          |  output$range out);
          |
          |  $reg
          |
-         |  always @(posedge clock)
+         |  always @(posedge clock${if (areset_sig.nonEmpty) "or posedge " + areset_sig  else ""})
          |  begin
-         |    if ($reset_code_sig) begin
-         |$resetString
+         |    if ($areset_code_sig) begin
+         |$aresetString
          |    end else if ($enable) begin
          |      shift_reg[0] <= in;
          |$assigns
@@ -93,7 +93,7 @@ class ShiftReg(
       path,
       f"""
          |module $desiredName (
-         |  input clock,$reset_sig$enable_sig
+         |  input clock,$areset_sig$enable_sig
          |  input$range in,
          |  output$range out);
          |  assign out = in;

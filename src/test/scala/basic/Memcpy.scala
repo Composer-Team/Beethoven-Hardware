@@ -254,6 +254,6 @@ class BeethovenToppy(n_parallel: Int,
 //  def main(args: Array[String]): Unit = (new ChiselStage).emitVerilog(new BeethovenTop(8, 24),
 //    annotations = AnnotationSeq(Seq(
 //      CustomDefaultMemoryEmission(MemoryNoInit),
-//      CustomDefaultRegisterEmission(useInitAsPreset = false, disableRandomization = true)
+//      CustomDefaultRegisterEmission(useInitAsPareset = false, disableRandomization = true)
 //    )))
 //}

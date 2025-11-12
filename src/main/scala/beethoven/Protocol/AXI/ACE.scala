@@ -41,7 +41,7 @@ class ACE(param: MasterPortParams) extends AXI4Compat(param, 16) {
   val cddata = Output(UInt(dataBits.W))
   val cdlast = Output(Bool())
 
-  /** RESET REQUIREMENTS: When reset is driven, rack, wack, crvalid and cdvalid
+  /** ARESET REQUIREMENTS: When areset is driven, rack, wack, crvalid and cdvalid
     * must be low
     */
   val rack = Output(Bool())

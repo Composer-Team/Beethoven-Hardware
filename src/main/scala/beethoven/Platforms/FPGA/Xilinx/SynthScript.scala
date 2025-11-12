@@ -75,7 +75,7 @@ create_bd_design "design_1"
 startgroup
 create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e soc
 endgroup
-apply_bd_automation -rule xilinx.com:bd_rule:zynq_ultra_ps_e -config {apply_board_preset "1" } [get_bd_cells soc]
+apply_bd_automation -rule xilinx.com:bd_rule:zynq_ultra_ps_e -config {apply_board_pareset "1" } [get_bd_cells soc]
 set_property -dict [list \\
     CONFIG.PSU__MAXIGP0__DATA_WIDTH {${platform.frontBusBeatBytes * 8}} \\
     CONFIG.PSU__SAXIGP${slave_AXIGP_datawidth}__DATA_WIDTH {128} \\
@@ -91,7 +91,7 @@ create_bd_cell -type module -reference ${top_module} top
 
 set my_bd [exec find ${output_dir} -name "design_1.bd"]
 
-connect_bd_net [get_bd_pins top/RESETn] [get_bd_pins soc/pl_resetn0]
+connect_bd_net [get_bd_pins top/ARESETn] [get_bd_pins soc/pl_aresetn0]
 
 # Connect together AXI4
 startgroup
@@ -111,7 +111,7 @@ set_property top design_1_wrapper [current_fileset]
 update_compile_order -fileset sources_1
 
 # Make it so that we can just run synth_design and not have to deal with out-of-context IPs
-reset_target all [get_files $$my_bd]
+areset_target all [get_files $$my_bd]
 export_ip_user_files -of_objects [get_files $$my_bd] -sync -no_script -force -quiet
 set_property synth_checkpoint_mode None [get_files $$my_bd]
 generate_target all [get_files $$my_bd]

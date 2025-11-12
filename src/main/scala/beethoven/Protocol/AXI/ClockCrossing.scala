@@ -17,10 +17,10 @@ class ClockCrossingImp(outer: ClockCrossing)(implicit p: Parameters)
     extends LazyRawModuleImp(outer) {
   val io = IO(new Bundle {
     val clock_src = Input(Clock())
-    val reset_src = Input(Bool())
+    val areset_src = Input(Bool())
 
     val clock_dst = Input(Clock())
-    val reset_dst = Input(Bool())
+    val areset_dst = Input(Bool())
   })
 
   if (platform.platformType != PlatformType.FPGA) {
@@ -44,8 +44,8 @@ class ClockCrossingImp(outer: ClockCrossing)(implicit p: Parameters)
       AXI4Compat.connectCompatMaster(cross.io.s_axi, bundle_i)
       AXI4Compat.connectCompatSlave(cross.io.m_axi, bundle_o)
       cross.io.s_axi_aclk := io.clock_src.asBool
-      cross.io.s_axi_aresetn := io.reset_src
+      cross.io.s_axi_aresetn := io.areset_src
       cross.io.m_axi_aclk := io.clock_dst.asBool
-      cross.io.m_axi_aresetn := io.reset_dst
+      cross.io.m_axi_aresetn := io.areset_dst
   }
 }

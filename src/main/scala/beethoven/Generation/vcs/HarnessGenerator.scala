@@ -50,7 +50,7 @@ object HarnessGenerator {
 
     def is_reserved(q: Seq[String]): Boolean = {
       val r = q.last
-      r == "clock" || r == "reset" || r == "RESETn"
+      r == "clock" || r == "areset" || r == "ARESETn"
     }
 
     val (unsanitized_input, unsanitized_output) = scrape_inputs(r)
@@ -58,10 +58,10 @@ object HarnessGenerator {
     val inputs = unsanitized_input.map(sanitize).filter(!is_reserved(_))
     val outputs = unsanitized_output.map(sanitize).filter(!is_reserved(_))
 
-    val is_reset_active_high = platform.isActiveHighReset
-    val reset_active = if (is_reset_active_high) 1 else 0
-    val reset_inactive = reset_active ^ 1
-    val reset_name = if (is_reset_active_high) "reset" else "RESETn"
+    val is_areset_active_high = platform.isActiveHighReset
+    val areset_active = if (is_areset_active_high) 1 else 0
+    val areset_inactive = areset_active ^ 1
+    val areset_name = if (is_areset_active_high) "areset" else "ARESETn"
     val ns_per_half_period = 1000.0 / platform.clockRateMHz
     val zero_width_neles = 2
     val w =
@@ -93,10 +93,10 @@ object HarnessGenerator {
           .mkString("") +
         f"""
            |  reg clock = 0;
-           |  reg $reset_name = $reset_active;
+           |  reg $areset_name = $areset_active;
            |  BeethovenTop top(
            |    .clock(clock),
-           |    .$reset_name($reset_name),
+           |    .$areset_name($areset_name),
            |""".stripMargin +
         (inputs ++ outputs)
           .map { q => f"    .${q.last}(${q.last})" }
@@ -114,16 +114,16 @@ object HarnessGenerator {
            |  end
            |
            |  initial begin:a2
-           |`ifdef ENABLE_TRACE
            |`ifndef ICARUS
            |    $$vcdplusfile("BeethovenTrace.vpd");
+           |`else
+           |    $$dumpfile("dump.vcd")
            |`endif
            |    $$dumpvars(0, top);
            |`ifndef ICARUS
            |    $$vcdpluson;
            |`endif
-           |`endif
-           |    $$init_input_signals(clock, $reset_name, ${inputs
+           |    $$init_input_signals(clock, $areset_name, ${inputs
             .map(_.last)
             .mkString(", ")});
            |    $$init_output_signals(${outputs.map(_.last).mkString(", ")});
@@ -131,16 +131,13 @@ object HarnessGenerator {
            |  end
            |
            |  always @(negedge clock) begin:a3
-           |`ifdef ENABLE_TRACE
            |    if (!dump_reg) begin
            |      dump_reg = 1'b1;
            |      $$dumpon;
            |    end
            |`endif
            |    $$tick();
-           |`ifdef ENABLE_TRACE
            |    $$dumpflush;
-           |`endif
            |  end
            |
            |  initial begin:a4
@@ -149,7 +146,7 @@ object HarnessGenerator {
            |    # ${ns_per_half_period}
            |    ;
            |  end
-           |  $reset_name = $reset_inactive;
+           |  $areset_name = $areset_inactive;
            |  end
            |endmodule
            |

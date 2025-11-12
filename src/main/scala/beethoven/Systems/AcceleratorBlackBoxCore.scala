@@ -332,7 +332,7 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
     val io = IO(new Bundle {
 
       val clock = Input(Clock())
-      val reset = Input(Reset())
+      val areset = Input(Reset())
 
       val cmd =
         MixedVec(aios.map(aio => Flipped(Decoupled(aio.req.bits.cloneType))))
@@ -387,7 +387,7 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
 
   val impl = Module(new bb)
   impl.io.clock := clock
-  impl.io.reset := reset
+  impl.io.areset := reset
 
   val cmd_fields = getStructureAsPorts(impl.io.cmd, INPUT)
   val resp_fields = getStructureAsPorts(impl.io.resp, OUTPUT)
@@ -469,7 +469,7 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
     f"""
        |module ${systemParams.name} (
        |  input clock,
-       |  input reset,
+       |  input areset,
        |
        |${getVerilogPorts(allIOs_noreserved)}
        |);
@@ -497,7 +497,7 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
     f"""
        |module ${this.desiredName} (
        |  input clock,
-       |  input reset,
+       |  input areset,
        |${getVerilogPortsOfSources(allIOs)}
        |  );
        |
@@ -505,7 +505,7 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
        |
        |${systemParams.name} ${macro_params} ${systemParams.name}_inst (
        |  .clock(clock),
-       |  .reset(reset),
+       |  .areset(areset),
        |$portInit
        |  );
        |

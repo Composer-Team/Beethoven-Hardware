@@ -143,7 +143,8 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
       dev.identifier,
       f"beethovenDevice${dev.identifier}"
     )
-    BeethovenBuild.requestModulePartition(lm.desiredName)
+    if (platform.physicalDevices.length > 1)
+      BeethovenBuild.requestModulePartition(lm.desiredName)
     lm
   }
   LazyModuleWithSLRs.freezeSLRPush = false
@@ -408,11 +409,11 @@ class TopImpl(outer: BeethovenTop)(implicit p: Parameters)
       case BeethovenInternalMemKey => outer.AXI_MEM
     }))
   val clocks = full_config(ClockKey)
-  val resets = full_config(ResetKey)
+  val aresets = full_config(ResetKey)
 
   val clock = clocks(0)
   childClock := clock
-  childReset := resets(0)
+  childReset := aresets(0)
 
   // Generate C++ headers once all of the cores have been generated so that they have
   //   the opportunity to dictate which symbols they want exported
@@ -426,19 +427,19 @@ class TopImpl(outer: BeethovenTop)(implicit p: Parameters)
     * of the submodules and on which SLR they belong.
     */
 
-  // reset propagation
+  // areset propagation
   locally {
     val devicesNeedingReset =
       (LazyModuleWithSLRs.toplevelObjectsPerSLR.map(_._1) ++
         outer.devices.map { b: Subdevice => b.deviceId }).distinct
-    val resets = devicesNeedingReset.map { a =>
+    val aresets = devicesNeedingReset.map { a =>
       (a, childReset)
     }
     outer.devices.foreach { dev =>
-      dev.module.reset := resets.find(_._1 == dev.deviceId).get._2
+      dev.module.reset := aresets.find(_._1 == dev.deviceId).get._2
     }
     LazyModuleWithSLRs.toplevelObjectsPerSLR.foreach { case (idx, lm) =>
-      lm.module.asInstanceOf[Module].reset := resets.find(_._1 == idx).get._2
+      lm.module.asInstanceOf[Module].reset := aresets.find(_._1 == idx).get._2
     }
 
   }

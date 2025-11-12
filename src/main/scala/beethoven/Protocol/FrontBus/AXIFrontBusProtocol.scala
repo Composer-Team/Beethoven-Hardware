@@ -95,23 +95,23 @@ class AXIFrontBusProtocol(nClocks: Int = 1) extends FrontBusProtocol {
 
     }
 
-    val base_reset = if (platform.isActiveHighReset) {
+    val base_areset = if (platform.isActiveHighReset) {
       "areset"
     } else {
       "ARESETn"
     }
 
-    val resets = Seq.tabulate(nClocks) { i =>
-      val reset = IO(Input(AsyncReset()))
+    val aresets = Seq.tabulate(nClocks) { i =>
+      val areset = IO(Input(AsyncReset()))
       if (i == 0)
-        reset.suggestName(base_reset)
+        areset.suggestName(base_areset)
       else
-        reset.suggestName(f"${base_reset}_$i")
+        areset.suggestName(f"${base_areset}_$i")
     }
     config.alterPartial({
       case ClockKey => clocks
       case ResetKey =>
-        if (platform.isActiveHighReset) resets else resets.map(a => (!a.asBool).asAsyncReset)
+        if (platform.isActiveHighReset) aresets else aresets.map(a => (!a.asBool).asAsyncReset)
     })
   }
 

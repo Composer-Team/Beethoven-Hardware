@@ -45,7 +45,7 @@
 //         Generation.Stage.ConfigsAnnotation(config),
 //         CustomDefaultMemoryEmission(MemoryNoInit),
 //         CustomDefaultRegisterEmission(
-//           useInitAsPreset = false,
+//           useInitAsPareset = false,
 //           disableRandomization = true
 //         ),
 //         RunFirrtlTransformAnnotation(new VerilogEmitter)
@@ -78,7 +78,7 @@
 //         Generation.Stage.ConfigsAnnotation(config),
 //         CustomDefaultMemoryEmission(MemoryNoInit),
 //         CustomDefaultRegisterEmission(
-//           useInitAsPreset = false,
+//           useInitAsPareset = false,
 //           disableRandomization = true
 //         ),
 //         RunFirrtlTransformAnnotation(new VerilogEmitter)
