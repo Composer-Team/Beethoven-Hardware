@@ -95,23 +95,21 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters) exte
 
         // need to count beats in the transaction because we might follow two transactions back to back with each other
 
-        val handlingLongWriteTx = RegInit(Bool(), false.B)
+        val expectingFutureBurst = RegInit(Bool(), false.B)
         val prevSourceMap = Reg(UInt(out.params.sourceBits.W))
         val prevSource = Reg(UInt(in.params.sourceBits.W))
         val singleBeatLgSz = log2Up(in.a.bits.data.getWidth / 8)
 
-        in.a.ready := handlingLongWriteTx || (
-          !full && (out.a.fire || !a_in_valid)
-        )
-        val longBeatExp, longBeatCount = RegInit(
-          UInt(log2Up(Math.max(63, platform.prefetchSourceMultiplicity - 1)).W),
+        val longBeatCount = RegInit(
+          UInt(log2Up(platform.prefetchSourceMultiplicity).W),
           0.U
         )
+        in.a.ready := ((expectingFutureBurst && in.a.bits.source === prevSource) || (!expectingFutureBurst && !full)) && (out.a.fire || !a_in_valid)
 
         // this HAS to be the case, otherwise we risk deadlock. But I think it's also just part of the
         // TileLink standard that requests must be provided on contiguous beats.
         // see page 20 of TileLink standard v1.9.3
-        assert(!handlingLongWriteTx || !in.a.valid || prevSource === in.a.bits.source)
+        assert(!expectingFutureBurst || !in.a.valid || prevSource === in.a.bits.source)
 
         when(out.a.fire && !in.a.fire) {
           a_in_valid := false.B
@@ -121,29 +119,25 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters) exte
           a_in := in.a.bits
           a_in_valid := true.B
           prevSource := in.a.bits.source
-          when(handlingLongWriteTx) {
-            a_in.source := prevSourceMap
-            longBeatCount := longBeatCount + 1.U
-            when(longBeatCount === longBeatExp) {
-              handlingLongWriteTx := false.B
-            }
-          }.otherwise {
-            val data_width = in.a.bits.data.getWidth / 8
-            val lognbeats = in.a.bits.size - log2Up(data_width).U
-            // shift out to give us # of beats
-            val nbeats = 1.U << lognbeats
-            when(
-              in.a.bits.opcode === TLMessages.PutFullData && in.a.bits.size > singleBeatLgSz.U
-            ) {
-              handlingLongWriteTx := true.B
-              // size gives us log2 #ofbytes
-              // subtract by databus width to give us log2 #ofbeats
+          assert(
+            in.a.bits.size >= log2Up(edgeOut.manager.beatBytes).U,
+            "TLSourceShrinker2: Request too small"
+          )
+          val data_width = in.a.bits.data.getWidth / 8
+          val lognbeats = in.a.bits.size - log2Up(data_width).U
+          // shift out to give us # of beats
+          val nbeats = 1.U << lognbeats
+          val nbeats_MO = nbeats - 1.U
+          val longTxCondition = nbeats_MO > 0.U && in.a.bits.opcode === TLMessages.PutFullData
 
-              longBeatExp := nbeats
-              longBeatCount := 1.U
-            }.otherwise {
-              handlingLongWriteTx := false.B
-            }
+          when(expectingFutureBurst) {
+            a_in.source := prevSourceMap
+            longBeatCount := longBeatCount - 1.U
+            expectingFutureBurst := longBeatCount > 1.U
+            assert(in.a.bits.source === prevSource)
+          }.otherwise {
+            longBeatCount := nbeats_MO
+            expectingFutureBurst := longTxCondition
             allocated(nextFree) := true.B
             sourceOut2InMap(nextFree) := in.a.bits.source
             a_in.source := nextFree
@@ -151,12 +145,8 @@ class TLSourceShrinkerDynamicBlocking(maxNIDs: Int)(implicit p: Parameters) exte
               Mux(
                 in.a.bits.opcode === TLMessages.PutFullData,
                 0.U, // if write then we only expect 1 write response
-                nbeats - 1.U
+                nbeats_MO
               ) // if read, then many responses
-            assert(
-              in.a.bits.size >= log2Up(edgeOut.manager.beatBytes).U,
-              "TLSourceShrinker2: Request too small"
-            )
           }
         }
 
