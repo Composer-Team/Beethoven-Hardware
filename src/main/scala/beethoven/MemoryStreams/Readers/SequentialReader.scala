@@ -259,7 +259,7 @@ class SequentialReader(
 
   val allocatingBig = WireInit(false.B)
   val allocatingSmall = WireInit(false.B)
-  val expectedChannelBeats = Reg(UInt((addressBits - log2Up(userBytes)).W))
+  val expectedChannelBeats = RegInit(UInt((addressBits - log2Up(userBytes)).W), 0.U)
 
   switch(state) {
     is(s_idle) {
