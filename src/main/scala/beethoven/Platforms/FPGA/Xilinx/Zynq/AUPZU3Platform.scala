@@ -15,7 +15,7 @@ case class AUPZU3Platform(
     memoryNChannels: Int = 1,
     override val clockRateMHz: Int = 100,
     overrideMemoryBusWidthBytes: Option[Int] = None,
-    override val hasDebugAXICACHEPROT: Boolean = false
+    override val hasDebugAXICACHEPROT: Boolean = true
 ) extends Platform
     with HasPostProccessorScript
     with HasXilinxMem {
