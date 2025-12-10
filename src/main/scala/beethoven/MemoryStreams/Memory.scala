@@ -555,7 +555,7 @@ class CASICMemory(
   private val nRows = Math.max(nRowsSuggested, 4 * latency)
   override val desiredName =
     Memory.get_name(latency, dataWidth, nRows, 0, 0, nPorts)
-  implicit val io = IO(
+  implicit val io: MemoryIOBundle = IO(
     new MemoryIOBundle(0, 0, nPorts, log2Up(nRows), dataWidth, withWE)
   )
   MemoryCompiler.buildSRAM(

@@ -17,10 +17,9 @@ class MyAccelerator(dWidthBytes: Int)(implicit p: Parameters) extends Accelerato
   vec_out_request.valid := false.B
   vec_in_request.bits := DontCare
   vec_out_request.bits := DontCare
-  println("")
   val io = BeethovenIO(
     new AccelCommand("my_accel") {
-      val addend = UInt(dWidthBytes.W)
+      val addend = UInt((dWidthBytes*8).W)
       val vec_addr = Address()
       val n_eles = UInt(20.W)
     },
@@ -41,12 +40,12 @@ class MyAccelerator(dWidthBytes: Int)(implicit p: Parameters) extends Accelerato
       state := s_active
     }
   }.elsewhen(state === s_active) {
-    when (vec_out_request.ready && vec_out_data.isFlushed) {
+    when(vec_out_request.ready && vec_out_data.isFlushed) {
       state := s_response
     }
   }.elsewhen(state === s_response) {
     io.resp.valid := true.B
-    when (io.resp.fire) {
+    when(io.resp.fire) {
       state := s_idle
     }
   }

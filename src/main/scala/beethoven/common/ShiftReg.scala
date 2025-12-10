@@ -216,7 +216,10 @@ object ShiftRegEnable {
       m.io.clock := clock.asBool
       m.io.enable.get := enable
       m.io.in := (t match {
-        case a: Vec[UInt] => Cat(a)
+        case a: Vec[_] => a(0) match {
+          case Bits => Cat(a.asInstanceOf[Vec[Bits]])
+          case _ => throw new Exception("Dont know how to join these together")
+        }
         case _            => t.asUInt
       })
       as(m.io.out)

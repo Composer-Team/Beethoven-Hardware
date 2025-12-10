@@ -24,7 +24,7 @@ class AcceleratorSystem(val nCores: Int, core_offset: Int)(implicit
 ) extends LazyModule {
   val system_id = p(AcceleratorSystems).indexWhere(_.name == systemParams.name)
   val memParams = systemParams.memoryChannelConfig
-  implicit val baseName = systemParams.name
+  implicit val baseName: String = systemParams.name
   val readers = (0 until nCores) map { core_id =>
     memParams.filter(_.isInstanceOf[ReadChannelConfig]).map { para =>
       val param: ReadChannelConfig = para.asInstanceOf[ReadChannelConfig]

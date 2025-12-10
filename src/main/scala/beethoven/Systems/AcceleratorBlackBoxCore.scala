@@ -239,7 +239,7 @@ object AcceleratorBlackBoxCore {
 
       val channelLen = param.nChannels
 
-      mv.zipWithIndex.flatMap { case (v: T, idx: Int) =>
+      mv.zipWithIndex.flatMap { case (v, idx: Int) =>
         val channelName = channelLen match {
           case 1 => ""
           case _ => "_channel" + idx
