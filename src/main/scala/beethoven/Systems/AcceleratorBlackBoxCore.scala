@@ -62,9 +62,7 @@ object AcceleratorBlackBoxCore {
   def getVerilogModulePortInstantiation(
       m: Iterable[VerilogPort]
   ): (String, String) = {
-    def safeMkString(b: String, d: String, additive: String): String = if (
-      b.isEmpty
-    ) d
+    def safeMkString(b: String, d: String, additive: String): String = if (b.isEmpty) d
     else {
       if (d.isEmpty) b else b + additive + d
     }
@@ -129,10 +127,6 @@ object AcceleratorBlackBoxCore {
     }
   }
 
-  def fix2Real(a: String): String = {
-    a.replace(".", "_").replace("bits_", "")
-  }
-
   // for reads, there are a few dimensions. The first index is the read channel name itself, the second index is
   // the channel number, and the third index (if applicable) is the vector index
 
@@ -140,36 +134,89 @@ object AcceleratorBlackBoxCore {
       a: Data,
       primaryDirection: Boolean,
       structureDepth: Int = 0,
-      yieldSubfieldOnlyWithPrefix: Option[String] = None
+      yieldSubfieldOnlyWithPrefix: Option[String] = None,
+      yieldSubfieldWithSeq: Option[Seq[String]] = None,
+      markFirstDimWithSeq: Option[Seq[String]] = None,
+      markFirstDimWith: Option[String] = None
   ): Iterable[VerilogPort] = {
+    assert(!yieldSubfieldWithSeq.isDefined || !yieldSubfieldOnlyWithPrefix.isDefined)
+    def fix2Real(a: String): String = {
+      val spl = a.split("\\.")
+      val spl2: Seq[String] = markFirstDimWith match {
+        case None    => spl.toSeq
+        case Some(q) => Seq(spl(0), q) ++ spl.toSeq.drop(2)
+      }
+      spl2.mkString("_").replace("bits_", "")
+    }
     def getRName(s: String): String = {
+      // println("markFirstDim => " + markFirstDimWith)
       yieldSubfieldOnlyWithPrefix match {
         case None => fix2Real(s)
         case Some(t) =>
-          t + "_" + s.split("\\.").takeRight(structureDepth).mkString("_")
+          markFirstDimWith match {
+            case None =>
+              t + "_" + s.split("\\.").takeRight(structureDepth).mkString("_")
+            case Some(r) =>
+              val spl = s.split("\\.").takeRight(structureDepth - 1).mkString("_")
+              t + "_" + r + (if (spl.nonEmpty) "_" + spl else "")
+          }
       }
     }
     // println(a)
     a match {
-      // case _: EmptyAccelResponse =>
-        // Seq()
       case v: MixedVec[_] =>
-        v.zipWithIndex.flatMap { case (data, _) =>
-          getStructureAsPorts(
-            data,
-            primaryDirection,
-            structureDepth + 1,
-            yieldSubfieldOnlyWithPrefix
-          )
+        if (yieldSubfieldWithSeq.isDefined) {
+          assert(yieldSubfieldWithSeq.get.length == v.length)
+          v.zipWithIndex.zip(yieldSubfieldWithSeq.get).flatMap { case ((data, i), yo: String) =>
+            getStructureAsPorts(
+              data,
+              primaryDirection,
+              structureDepth,
+              Some(yo),
+              markFirstDimWithSeq = markFirstDimWithSeq
+            )
+          }
+        } else {
+          v.zipWithIndex.flatMap { case (data, i) =>
+            getStructureAsPorts(
+              data,
+              primaryDirection,
+              structureDepth + 1,
+              yieldSubfieldOnlyWithPrefix,
+              markFirstDimWith = markFirstDimWithSeq match {
+                case None => None
+                case Some(q) =>
+                  Some(q(i))
+              }
+            )
+          }
         }
       case v: Vec[_] =>
-        v.zipWithIndex.flatMap { case (data, _) =>
-          getStructureAsPorts(
-            data,
-            primaryDirection,
-            structureDepth + 1,
-            yieldSubfieldOnlyWithPrefix
-          )
+        if (yieldSubfieldWithSeq.isDefined) {
+          assert(yieldSubfieldWithSeq.get.length == v.length)
+          v.zipWithIndex.zip(yieldSubfieldWithSeq.get).flatMap { case ((data, i), yo) =>
+            getStructureAsPorts(
+              data,
+              primaryDirection,
+              structureDepth,
+              Some(yo),
+              markFirstDimWithSeq = markFirstDimWithSeq
+            )
+          }
+
+        } else {
+          v.zipWithIndex.flatMap { case (data, i) =>
+            getStructureAsPorts(
+              data,
+              primaryDirection,
+              structureDepth + 1,
+              yieldSubfieldOnlyWithPrefix,
+              markFirstDimWith = markFirstDimWithSeq match {
+                case None    => None
+                case Some(q) => Some(q(i))
+              }
+            )
+          }
         }
       case de: DecoupledIO[_] =>
         val v_iname = de.valid.instanceName
@@ -192,7 +239,8 @@ object AcceleratorBlackBoxCore {
             de.bits,
             primaryDirection,
             structureDepth + 1,
-            yieldSubfieldOnlyWithPrefix
+            yieldSubfieldOnlyWithPrefix,
+            markFirstDimWith = markFirstDimWith
           )
       case b: AccelCommand =>
         b.sortedElements.flatMap { case (q, data) =>
@@ -200,7 +248,8 @@ object AcceleratorBlackBoxCore {
             data,
             primaryDirection,
             structureDepth + 1,
-            yieldSubfieldOnlyWithPrefix
+            yieldSubfieldOnlyWithPrefix,
+            markFirstDimWith = markFirstDimWith
           )
         }
 
@@ -210,10 +259,14 @@ object AcceleratorBlackBoxCore {
             data,
             primaryDirection,
             structureDepth + 1,
-            yieldSubfieldOnlyWithPrefix
+            yieldSubfieldOnlyWithPrefix,
+            markFirstDimWith = markFirstDimWith
           )
         }
-      case b =>
+      case b: Data =>
+        // println(
+        //   f"${b.instanceName} -> ${getRName(b.instanceName)} (${yieldSubfieldOnlyWithPrefix} ${markFirstDimWith})"
+        // )
         Seq(
           VerilogPort(
             getRName(b.instanceName),
@@ -339,9 +392,7 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
       val resp = MixedVec(aios.map(aio => Decoupled(aio.resp.bits.cloneType)))
 
       val read_req = MixedVec(
-        rrio.map(rr =>
-          MixedVec(rr._1.map(rrr => Decoupled(rrr.bits.cloneType)))
-        )
+        rrio.map(rr => MixedVec(rr._1.map(rrr => Decoupled(rrr.bits.cloneType))))
       )
       val read_data = MixedVec(
         rrio.map(rr =>
@@ -353,14 +404,10 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
       val read_inProgress =
         MixedVec(rrio.map(rr => MixedVec(rr._2.map(_ => Input(Bool())))))
       val write_req = MixedVec(
-        writerIOs.map(wr =>
-          MixedVec(wr._1.map(wrr => Decoupled(wrr.bits.cloneType)))
-        )
+        writerIOs.map(wr => MixedVec(wr._1.map(wrr => Decoupled(wrr.bits.cloneType))))
       )
       val write_data = MixedVec(
-        writerIOs.map(wr =>
-          MixedVec(wr._2.map(wrd => Decoupled(wrd.data.bits.cloneType)))
-        )
+        writerIOs.map(wr => MixedVec(wr._2.map(wrd => Decoupled(wrd.data.bits.cloneType))))
       )
       val write_isFlushed =
         MixedVec(writerIOs.map(wr => MixedVec(wr._2.map(_ => Input(Bool())))))
@@ -389,8 +436,16 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
   impl.io.clock := clock
   impl.io.areset := reset
 
-  val cmd_fields = getStructureAsPorts(impl.io.cmd, INPUT)
-  val resp_fields = getStructureAsPorts(impl.io.resp, OUTPUT)
+  val cmd_fields = getStructureAsPorts(
+    impl.io.cmd,
+    INPUT,
+    markFirstDimWithSeq = Some(custom.beethovenIOs.map(_.coreCommand.commandName))
+  )
+  val resp_fields = getStructureAsPorts(
+    impl.io.resp,
+    OUTPUT,
+    markFirstDimWithSeq = Some(custom.beethovenIOs.map(_.coreCommand.commandName))
+  )
   val rr_fields =
     getRWChannelAsPorts(impl.io.read_req, readerParams, "req", OUTPUT)
   val rd_fields =
@@ -407,7 +462,12 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
   val wd_fields =
     getRWChannelAsPorts(impl.io.write_data, writerParams, "data", OUTPUT)
   val wi_fields =
-    getStructureAsPorts(impl.io.write_isFlushed, INPUT)
+    getStructureAsPorts(
+      impl.io.write_isFlushed,
+      INPUT,
+      yieldSubfieldWithSeq = Some(writerParams.map(_.name)),
+      markFirstDimWithSeq = Some(writerParams.map(_ => "isFlushed"))
+    )
   val spr_fields =
     getRWChannelAsPorts(impl.io.sp_data_req, spParams, "req", OUTPUT)
   val spd_fields =
@@ -451,23 +511,26 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
   val allIOs_noreserved = allIOs.filter(a => !a.name.contains("__") && !a.name.contains("_rd"))
 
   val bb_macro_params = {
-    val params = systemParams.moduleConstructor.asInstanceOf[BlackboxBuilderCustom].verilogMacroParams 
+    val params =
+      systemParams.moduleConstructor.asInstanceOf[BlackboxBuilderCustom].verilogMacroParams
     if (params.isEmpty) {
       ""
     } else {
-      "#(parameter " + params.keySet.map { pName =>
-        val v = params(pName) match {
-          case s: String => f"\"$s\""
-          case a => a.toString()
+      " #(parameter " + params.keySet
+        .map { pName =>
+          val v = params(pName) match {
+            case s: String => f"\"$s\""
+            case a         => a.toString()
+          }
+          f"${pName}"
         }
-        f"${pName}"
-      }.mkString(", ") + ")"
+        .mkString(", ") + ")"
     }
   }
 
   val userBB =
     f"""
-       |module ${systemParams.name} (
+       |module ${systemParams.name}${bb_macro_params}(
        |  input clock,
        |  input areset,
        |
@@ -480,17 +543,20 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
   val (portInit, wireDec) = getVerilogModulePortInstantiation(allIOs_noreserved)
 
   val macro_params = {
-    val params = systemParams.moduleConstructor.asInstanceOf[BlackboxBuilderCustom].verilogMacroParams 
+    val params =
+      systemParams.moduleConstructor.asInstanceOf[BlackboxBuilderCustom].verilogMacroParams
     if (params.isEmpty) {
       ""
     } else {
-      "#(" + params.keySet.map { pName =>
-        val v = params(pName) match {
-          case s: String => f"\"$s\""
-          case a => a.toString()
+      "#(" + params.keySet
+        .map { pName =>
+          val v = params(pName) match {
+            case s: String => f"\"$s\""
+            case a         => a.toString()
+          }
+          f".${pName}(${v})"
         }
-        f".${pName}(${v})"
-      }.mkString(", ") + ")"
+        .mkString(", ") + ")"
     }
   }
   val bbWrapper =

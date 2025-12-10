@@ -9,9 +9,10 @@ import beethoven.common.hasAccessibleUserSubRegions
 import scala.language.experimental.macros
 
 object hasRoccResponseFields {
-  /** 96                 64                    0
-   * | --C_ID, S_ID, RD |------ data ---------|
-   */
+
+  /** 96 64 0
+    * \| --C_ID, S_ID, RD |------ data ---------|
+    */
   def apply[T <: hasRoccResponseFields with Bundle](gen: T, in: UInt)(implicit p: Parameters): T = {
     val wire = Wire(gen)
     val fsrs = gen.fieldSubranges
@@ -19,9 +20,12 @@ object hasRoccResponseFields {
       wire.elements(name) := in(high, low)
     }
     val xlen = 64
-    wire.rd := in(xlen+5 - 1, xlen)
+    wire.rd := in(xlen + 5 - 1, xlen)
     wire.system_id := in(xlen - 1 + 5 + SystemIDLengthKey, xlen + 5)
-    wire.core_id := in(xlen - 1 + 5 + SystemIDLengthKey + CoreIDLengthKey, xlen + 5 + SystemIDLengthKey)
+    wire.core_id := in(
+      xlen - 1 + 5 + SystemIDLengthKey + CoreIDLengthKey,
+      xlen + 5 + SystemIDLengthKey
+    )
     wire
   }
 }
@@ -35,16 +39,23 @@ trait hasRDField {
   val rd: UInt
 }
 
-class AccelResponse(val responseName: String) extends Bundle with hasAccessibleUserSubRegions with hasDataField with hasRDField {
+class AccelResponse(val responseName: String)
+    extends Bundle
+    with hasAccessibleUserSubRegions
+    with hasDataField
+    with hasRDField {
   override def sortedElements: Seq[(String, Data)] = elements.toSeq.sortBy(_._1)
   override val reservedNames: Seq[String] = Seq("rd")
   val rd = UInt(5.W)
   private[beethoven] def getDataField: UInt = {
     val datacat = Cat(realElements.map(_._2.asUInt).reverse)
-    require(datacat.getWidth <= nDataBits, "Defined response is too large to fit in return payload.\n" +
-      "Consider redefining the XLen parameter if this behavior is necessary.")
+    require(
+      datacat.getWidth <= nDataBits,
+      "Defined response is too large to fit in return payload.\n" +
+        "Consider redefining the XLen parameter if this behavior is necessary."
+    )
     if (datacat.getWidth < nDataBits) {
-      Cat(0.U((nDataBits-datacat.getWidth).W), datacat)
+      Cat(0.U((nDataBits - datacat.getWidth).W), datacat)
     } else datacat
   }
 }
@@ -59,7 +70,6 @@ trait hasRoccResponseFields extends hasAccessibleUserSubRegions with hasDataFiel
   val core_id: UInt
 
   val rd: UInt
-
 
   private[beethoven] def packRocc(): UInt = {
     require(getDataField.getWidth == nDataBits)
