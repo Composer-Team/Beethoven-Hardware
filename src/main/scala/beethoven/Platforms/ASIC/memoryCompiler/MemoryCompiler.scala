@@ -343,12 +343,13 @@ object MemoryCompiler {
       if (withWE)
         mc.asInstanceOf[MemoryCompiler with SupportsWriteEnable]
           .getWESRAMArray(nRows, dataWidth, nPorts, latency)
-          .map(a => (a, a.characteristics("area").asInstanceOf[Float]))
+          .map{ q =>
+          (q, q.array.flatten.map(s => s(SRAMArea)).sum)
+        }
       else
         mc.getMemoryCascadeOpt(nRows, dataWidth, nPorts, latency, withWE).map { q =>
           (q, q.array.flatten.map(s => s(SRAMArea)).sum)
         }
-      //          .map(a => (a, a.characteristics("area").asInstanceOf[Float]))
     }
 
     def rn[T <: Data](x: T): T = {

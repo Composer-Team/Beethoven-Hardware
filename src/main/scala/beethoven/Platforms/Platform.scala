@@ -137,6 +137,8 @@ abstract class Platform {
   // debug for driving AXI prot/cache signals from the accelerator. The host can change how beethoven drives
   // these signals in case there's a problem
   val hasDebugAXICACHEPROT = false
+
+  def injectIntoHarness(ins: Seq[String], outs: Seq[String]): String = ""
 }
 
 abstract class PhysicalInterface {

@@ -94,11 +94,7 @@ always @(posedge clock) begin
         state <= `GO;
       end
     end else if (state == `GO) begin
-      if (sa_idle) begin
-        state <= `FLUSH;
-      end
-    end else if (state == `FLUSH) begin
-      if (vec_out_req_ready && vec_out_isFlushed) begin
+      if (sa_idle && vec_out_req_ready && vec_out_isFlushed) begin
         state <= `RESPONSE;
       end
     end else if (state == `RESPONSE) begin

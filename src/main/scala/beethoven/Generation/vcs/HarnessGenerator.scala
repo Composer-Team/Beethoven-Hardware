@@ -153,6 +153,8 @@ object HarnessGenerator {
            |  end
            |  $areset_name = $areset_inactive;
            |  end
+           |
+           |${platform.injectIntoHarness(inputs.map(_.last), outputs.map(_.last))}
            |endmodule
            |
            |""".stripMargin

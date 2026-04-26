@@ -23,11 +23,11 @@ This / scalaVersion := myScalaVersion
 
 lazy val beethoven = (project in file(".")).settings(
   name := "beethoven-hardware",
-  version := "0.1.6",
+  version := "0.1.7-dev11" ,
   organization := "edu.duke.cs.apex",
   libraryDependencies ++= Seq(
     "org.chipsalliance" %% "chisel" % chiselVersion,
-    "edu.duke.cs.apex" %% "diplomacy" % "0.0.2",
+    "edu.duke.cs.apex" %% "diplomacy" % "0.0.3-dev5",
     "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
   ),
   resolvers += ("reposilite-repository-releases" at "http://54.165.244.214:8080/releases")

@@ -137,13 +137,6 @@ object Generation {
     )
     header.write(f"""
          |// Automatically generated header for Beethoven
-         |
-         |#ifdef BAREMETAL
-         |#include <beethoven_baremetal/allocator/alloc_baremetal.h>
-         |#else
-         |#include <beethoven/allocator/alloc.h>
-         |#endif
-         |#include <beethoven/rocc_cmd.h>
          |#include <cinttypes>
          |#ifndef BAREMETAL
          |#include <optional>
@@ -167,10 +160,17 @@ object Generation {
          |// MMIO address + field offsets
          |static const uint8_t system_id_bits = $SystemIDLengthKey;
          |static const uint8_t core_id_bits = $CoreIDLengthKey;
-         |extern beethoven::beethoven_pack_info pack_cfg;
          |$mmio_addr
          |// IDs to access systems directly through RoCC interface
          |$system_ids
+         |#ifndef __BEETHOVEN_CONSTANTS_ONLY
+         |#ifdef BAREMETAL
+         |#include <beethoven_baremetal/allocator/alloc_baremetal.h>
+         |#else
+         |#include <beethoven/allocator/alloc.h>
+         |#endif
+         |#include <beethoven/rocc_cmd.h>
+         |extern beethoven::beethoven_pack_info pack_cfg;
          |// Custom command interfaces
          |$commandDeclarations
          |// misc
@@ -178,6 +178,7 @@ object Generation {
          |$dma_def
          |// Verilator support
          |$mem_def
+         |#endif
          |#endif
          |//
   """.stripMargin)
