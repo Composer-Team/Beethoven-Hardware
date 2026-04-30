@@ -73,9 +73,6 @@ private[beethoven] class BRAMSDP(
 
   override val desiredName = f"$dname_prefix$dname_suffix"
 
-  private val memoryRoot = os.pwd / ".memories"
-  if (!os.exists(memoryRoot)) os.makeDir(memoryRoot)
-
   private val component = memoryRoot / f"$desiredName.v"
 
   BeethovenBuild.addSource(component)

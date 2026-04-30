@@ -582,7 +582,7 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
   // Link in Wrapper using BeethovenBuild,
   // write source to file first
   val wrapperFName =
-    BeethovenBuild.hw_build_dir / s"${systemParams.name}_chiselLink.v"
+    (BeethovenBuild.paths.rtlRoot / "hw") / s"${systemParams.name}_chiselLink.v"
   os.write.over(wrapperFName, bbWrapper)
 
   val bb_fpath = custom.sourcePath / s"${systemParams.name}.v"
@@ -601,7 +601,7 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
   } else {
     println(s"Found '${bb_fpath.toString()}', not overwriting")
   }
-  val link_loc = BeethovenBuild.hw_build_dir / s"${systemParams.name}.v"
+  val link_loc = (BeethovenBuild.paths.rtlRoot / "hw") / s"${systemParams.name}.v"
   if (os.exists(link_loc) && !os.isLink(link_loc)) {
     throw new Exception(
       f"Your module name (${systemParams.name}) collides with" +

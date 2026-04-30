@@ -28,7 +28,9 @@ lazy val beethoven = (project in file(".")).settings(
   libraryDependencies ++= Seq(
     "org.chipsalliance" %% "chisel" % chiselVersion,
     "edu.duke.cs.apex" %% "diplomacy" % "0.0.3-dev5",
-    "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
+    "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0",
+    "org.tomlj" % "tomlj" % "1.1.1",
+    "io.github.classgraph" % "classgraph" % "4.8.165"
   ),
   resolvers += ("reposilite-repository-releases" at "http://54.165.244.214:8080/releases")
     .withAllowInsecureProtocol(true),

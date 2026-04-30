@@ -1,5 +1,6 @@
 package beethoven.Generation.Annotators
 
+import beethoven.BeethovenBuild
 import beethoven.Generation.CLogger
 import os.Path
 
@@ -29,12 +30,15 @@ object CrossBoundaryDisable {
     val sed_cmds = disableList map { mname =>
       f"/$mname (/ i (* keep_hierarchy = \"yes\" *)"
     }
-    // write sed cmds to file
-    os.write.over(os.pwd / "sed_script.sed", sed_cmds.mkString("\n"))
+    // Per-run scratch lives under target/.cache/.tmp/.
+    val tmpDir = BeethovenBuild.paths.cacheRoot / ".tmp"
+    if (!os.exists(tmpDir)) os.makeDir.all(tmpDir)
+    val sedScript = tmpDir / "sed_script.sed"
+    os.write.over(sedScript, sed_cmds.mkString("\n"))
 
     //      var found = false
     files.toList.par.foreach { file =>
-      os.proc(sed_bin, "-i", f"-f" + os.pwd / "sed_script.sed", file).call()
+      os.proc(sed_bin, "-i", f"-f" + sedScript, file).call()
     }
 //    CLogger.log(s"CrossBoundaryDisable took ${System.currentTimeMillis() - start_time} ms")
 

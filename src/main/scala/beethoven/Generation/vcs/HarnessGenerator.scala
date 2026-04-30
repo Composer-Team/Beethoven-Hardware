@@ -37,7 +37,7 @@ object HarnessGenerator {
   }
 
   def generateHarness()(implicit p: Parameters): Unit = {
-    val r = os.read(BeethovenBuild.hw_build_dir / "BeethovenTop.sv").split("\n")
+    val r = os.read((BeethovenBuild.paths.rtlRoot / "hw") / "BeethovenTop.sv").split("\n")
 
     def sanitize(q: String): Seq[String] = {
       val r =
@@ -159,6 +159,6 @@ object HarnessGenerator {
            |
            |""".stripMargin
 
-    os.write(BeethovenBuild.hw_build_dir / "BeethovenTopVCSHarness.v", w)
+    os.write((BeethovenBuild.paths.rtlRoot / "hw") / "BeethovenTopVCSHarness.v", w)
   }
 }

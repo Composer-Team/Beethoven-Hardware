@@ -38,7 +38,12 @@ case class BeethovenIOInterface[T <: AccelCommand, R <: AccelResponse](
 )
 
 trait ModuleConstructor {
-  private val synthesis_test_directory = os.pwd / ".test_synth"
+  /** Synth-side resource estimation scratch (`target/.cache/.test_synth/`).
+    * Currently dead — referenced only in commented-out code inside
+    * `estimateFPGAResources`. Kept for the in-progress feature.
+    */
+  private def synthesis_test_directory: os.Path =
+    BeethovenBuild.paths.cacheRoot / ".test_synth"
   // this is under construction by carson
   def estimateFPGAResources(
       constructor: () => chisel3.Module

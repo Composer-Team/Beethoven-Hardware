@@ -14,9 +14,16 @@ object AWSF1Platform {
     res.exitCode == 0
   }
 
-  def initial_setup(ip: String): Unit = {
-    val croot = sys.env("BEETHOVEN_PATH")
-    os.proc("rsync", "-azr", f"$croot/bin", f"ec2-user@$ip:~/bin").call()
+  /** Bootstrap an AWS instance with Beethoven's deploy scripts.
+    *
+    * @param frameworkRoot
+    *   The root of the Beethoven-Hardware checkout — must contain a `bin/`
+    *   subdirectory. Caller should pass `BeethovenBuild.paths.beethovenHardwareRoot.get`,
+    *   handling the `None` case (project uses maven version, no checkout to
+    *   rsync) appropriately.
+    */
+  def initial_setup(ip: String, frameworkRoot: os.Path): Unit = {
+    os.proc("rsync", "-azr", f"$frameworkRoot/bin", f"ec2-user@$ip:~/bin").call()
     os.proc("ssh", f"ec2-user@$ip", "~/bin/aws/scripts/initial_setup.sh").call()
   }
 }
@@ -55,16 +62,16 @@ class AWSF1Platform(memoryNChannels: Int, val clock_recipe: String = "A0")
   override def postProcessorMacro(c: Parameters, paths: Seq[Path]): Unit = {
     if (c(BuildModeKey) == BuildMode.Synthesis) {
       // rename beethoven.v to beethoven.sv
-      val aws_dir = BeethovenBuild.top_build_dir / "aws"
+      val aws_dir = BeethovenBuild.paths.rtlRoot / "aws"
       val gen_dir = aws_dir / "build-dir" / "generated-src"
       val run_dir = aws_dir / "build-dir" / "build" / "scripts"
       val top_file = gen_dir / "beethoven.sv"
       os.makeDir.all(gen_dir)
       os.makeDir.all(run_dir)
       os.proc("touch", top_file.toString()).call()
-      os.copy.over(BeethovenBuild.hw_build_dir, gen_dir)
+      os.copy.over((BeethovenBuild.paths.rtlRoot / "hw"), gen_dir)
       os.move(gen_dir / "BeethovenTop.v", top_file)
-      os.walk(BeethovenBuild.top_build_dir, followLinks = false, maxDepth = 1)
+      os.walk(BeethovenBuild.paths.rtlRoot, followLinks = false, maxDepth = 1)
         .foreach(p =>
           if (
             p.last.endsWith(".cc") || p.last.endsWith(".h") || p.last
@@ -88,7 +95,7 @@ class AWSF1Platform(memoryNChannels: Int, val clock_recipe: String = "A0")
       )
 
       // write ip tcl
-      val ip_tcl = BeethovenBuild.top_build_dir / "aws" / "ip.tcl"
+      val ip_tcl = BeethovenBuild.paths.rtlRoot / "aws" / "ip.tcl"
       val ip_cmds = BeethovenBuild.postProcessorBundles
         .filter(_.isInstanceOf[tclMacro])
         .map(_.asInstanceOf[tclMacro].cmd)
@@ -148,7 +155,14 @@ class AWSF1Platform(memoryNChannels: Int, val clock_recipe: String = "A0")
           }
         }
         if (!AWSF1Platform.check_if_setup(in)) {
-          AWSF1Platform.initial_setup(in)
+          val frameworkRoot = BeethovenBuild.paths.beethovenHardwareRoot.getOrElse(
+            sys.error(
+              "AWS F1 deploy needs a local Beethoven-Hardware checkout. " +
+                "Set [hardware.beethoven-hardware] path in Beethoven.toml " +
+                "(or BEETHOVEN_PATH in the legacy flow)."
+            )
+          )
+          AWSF1Platform.initial_setup(in, frameworkRoot)
         }
       }
     }

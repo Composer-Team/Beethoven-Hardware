@@ -65,10 +65,10 @@ case class AUPZU3Platform(
         disabled_master_axi = disabled_master_axi,
         slave_AXIGP_datawidth = slave_AXIGP_datawidth,
       )(p)
-      s.write_to_dir(BeethovenBuild.top_build_dir / "implementation")
+      s.write_to_dir(BeethovenBuild.paths.rtlRoot / "implementation")
       // this should be safe because no synchronous logic in top level, only instantiations. Vivado doesn't
       // like .sv top-levels
-      os.move(BeethovenBuild.hw_build_dir / "BeethovenTop.sv", BeethovenBuild.hw_build_dir / "BeethovenTop.v")
+      os.move((BeethovenBuild.paths.rtlRoot / "hw") / "BeethovenTop.sv", (BeethovenBuild.paths.rtlRoot / "hw") / "BeethovenTop.v")
     }
   }
 

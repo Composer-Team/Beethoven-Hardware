@@ -48,12 +48,12 @@ class ShiftReg(
     f"ShiftReg${gen.getClass.getName.split("\\.").last}_l${n}_w${width}_r${aresetName}_e${with_enable}"
 
   val width = gen.getWidth
-  os.makeDir.all(os.pwd / "SRs")
+  os.makeDir.all(BeethovenBuild.paths.cacheRoot / "SRs")
   val space = "      "
   val assigns = (0 until n - 1)
     .map { i => f"${space}shift_reg[${i + 1}] <= shift_reg[$i];" }
     .mkString("\n")
-  val path = os.pwd / "SRs" / f"$desiredName.v"
+  val path = BeethovenBuild.paths.cacheRoot / "SRs" / f"$desiredName.v"
   val annot = if (allow_fpga_shreg) "" else "(* shreg_extract = \"no\" *)\n    "
   val range = if (width > 0) f" [${width - 1}:0]" else ""
   val lat = if (n > 0) f" [0:${n - 1}]" else ""

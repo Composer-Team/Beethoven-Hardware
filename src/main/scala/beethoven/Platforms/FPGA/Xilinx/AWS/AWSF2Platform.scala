@@ -18,9 +18,20 @@ object AWSF2Platform {
     res.exitCode == 0
   }
 
-  def initial_setup(ip: String, remoteUsername: String): Unit = {
-    val croot = sys.env("BEETHOVEN_PATH")
-    os.proc("rsync", "-azr", f"$croot/bin", f"$remoteUsername@$ip:~/bin").call()
+  /** Bootstrap an AWS instance with Beethoven's deploy scripts.
+    *
+    * @param frameworkRoot
+    *   The root of the Beethoven-Hardware checkout — must contain a `bin/`
+    *   subdirectory. Caller should pass `BeethovenBuild.paths.beethovenHardwareRoot.get`,
+    *   handling the `None` case (project uses maven version, no checkout to
+    *   rsync) appropriately.
+    */
+  def initial_setup(
+      ip: String,
+      remoteUsername: String,
+      frameworkRoot: os.Path
+  ): Unit = {
+    os.proc("rsync", "-azr", f"$frameworkRoot/bin", f"$remoteUsername@$ip:~/bin").call()
     os.proc("ssh", f"$remoteUsername@$ip", "~/bin/aws/scripts/initial_setup.sh")
       .call()
   }
@@ -71,7 +82,7 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
   override def postProcessorMacro(c: Parameters, paths: Seq[Path]): Unit = {
     if (c(BuildModeKey) == BuildMode.Synthesis) {
       // rename beethoven.v to beethoven.sv
-      val aws_dir = BeethovenBuild.top_build_dir / "aws"
+      val aws_dir = BeethovenBuild.paths.rtlRoot / "aws"
       val gen_dir = aws_dir / "cl_beethoven_top" / "generated-src"
       val run_dir = aws_dir / "cl_beethoven_top" / "build" / "scripts"
       val top_file = gen_dir / "beethoven.sv"
@@ -79,16 +90,16 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
       os.makeDir.all(run_dir)
       os.proc("touch", top_file.toString()).call()
       Shell.write(
-        BeethovenBuild.hw_build_dir / "cl_beethoven_top.sv",
+        (BeethovenBuild.paths.rtlRoot / "hw") / "cl_beethoven_top.sv",
         withDMA = Shell.DMAType.ViaDMA
       )(c)
       Shell.write_header(
-        BeethovenBuild.hw_build_dir / "cl_beethoven_top_defines.vh"
+        (BeethovenBuild.paths.rtlRoot / "hw") / "cl_beethoven_top_defines.vh"
       )(c)
 
-      os.copy.over(BeethovenBuild.hw_build_dir, gen_dir)
+      os.copy.over((BeethovenBuild.paths.rtlRoot / "hw"), gen_dir)
       os.move(gen_dir / "BeethovenTop.sv", top_file)
-      os.walk(BeethovenBuild.top_build_dir, followLinks = false, maxDepth = 1)
+      os.walk(BeethovenBuild.paths.rtlRoot, followLinks = false, maxDepth = 1)
         .foreach(p =>
           if (
             p.last.endsWith(".cc") || p.last.endsWith(".h") || p.last
@@ -113,7 +124,7 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
       )
 
       // write ip tcl
-      val ip_tcl = BeethovenBuild.top_build_dir / "aws" / "ip.tcl"
+      val ip_tcl = BeethovenBuild.paths.rtlRoot / "aws" / "ip.tcl"
       val ip_cmds = BeethovenBuild.postProcessorBundles
         .filter(_.isInstanceOf[tclMacro])
         .map(_.asInstanceOf[tclMacro].cmd)
@@ -129,10 +140,10 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
           |""".stripMargin
       )
       Xilinx.AWS.SynthScript.write(
-        BeethovenBuild.top_build_dir / "synth_cl_beethoven_top.tcl"
+        BeethovenBuild.paths.rtlRoot / "synth_cl_beethoven_top.tcl"
       )
       os.write.over(
-        BeethovenBuild.top_build_dir / "combined_pnr.xdc",
+        BeethovenBuild.paths.rtlRoot / "combined_pnr.xdc",
         f"""
         |source ~/aws-fpga/hdk/common/shell_stable/build/constraints/small_shell_level_1_fp_cl.xdc
         |source ~/cl_beethoven_top/build/scripts/user_constraints.xdc
@@ -210,14 +221,14 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
             os.proc(
               "rsync",
               "-avz",
-              (BeethovenBuild.top_build_dir / "synth_cl_beethoven_top.tcl")
+              (BeethovenBuild.paths.rtlRoot / "synth_cl_beethoven_top.tcl")
                 .toString(),
               f"$remoteUsername@$in:~/cl_beethoven_top/build/scripts/"
             ).call()
             os.proc(
               "rsync",
               "-avz",
-              (BeethovenBuild.top_build_dir / "user_constraints.xdc")
+              (BeethovenBuild.paths.rtlRoot / "user_constraints.xdc")
                 .toString(),
               f"$remoteUsername@$in:~/cl_beethoven_top/build/scripts/"
             ).call()
@@ -240,7 +251,14 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
           }
         }
         if (!check_if_setup(in, remoteUsername)) {
-          initial_setup(in, remoteUsername)
+          val frameworkRoot = BeethovenBuild.paths.beethovenHardwareRoot.getOrElse(
+            sys.error(
+              "AWS F2 deploy needs a local Beethoven-Hardware checkout. " +
+                "Set [hardware.beethoven-hardware] path in Beethoven.toml " +
+                "(or BEETHOVEN_PATH in the legacy flow)."
+            )
+          )
+          initial_setup(in, remoteUsername, frameworkRoot)
         }
       }
     }

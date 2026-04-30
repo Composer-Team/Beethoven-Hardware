@@ -78,13 +78,16 @@ object Generation {
         s"""
            |static const uint64_t addrMask = 0x${addrSet.mask.toLong.toHexString};
            |""".stripMargin,
-        if (
-          platform.isInstanceOf[PlatformHasDMA] &&
-          p(BuildModeKey) != Simulation
-        ) "#define " + (platform.asInstanceOf[PlatformHasDMA].DMAisLite match {
-          case true  => "BEETHOVEN_HAS_DMA_LITE"
-          case false => "BEETHOVEN_HAS_DMA_AXI4"
-        })
+        // The DMA macro reflects platform hardware capability, not runtime
+        // mode — emitting it unconditionally for DMA platforms keeps
+        // beethoven_hardware.h byte-identical between sim and synth (a hard
+        // invariant of target/binding/). SW that needs sim-vs-synth gating
+        // uses #ifdef SIM elsewhere in this file.
+        if (platform.isInstanceOf[PlatformHasDMA])
+          "#define " + (platform.asInstanceOf[PlatformHasDMA].DMAisLite match {
+            case true  => "BEETHOVEN_HAS_DMA_LITE"
+            case false => "BEETHOVEN_HAS_DMA_AXI4"
+          })
         else "", {
           if (platform.memoryNChannels > 0) {
             val idDtype = getVerilatorDtype(platform.extMem.master.idBits)
@@ -131,9 +134,9 @@ object Generation {
     val mmio_addr =
       "const uint64_t BeethovenMMIOOffset = 0x" + platform.frontBusBaseAddress.toHexString + "LL;"
 
-    os.makeDir.all(BeethovenBuild.top_build_dir / "beethoven")
+    os.makeDir.all(BeethovenBuild.paths.bindingRoot / "beethoven")
     val header = new FileWriter(
-      (BeethovenBuild.top_build_dir / "beethoven_hardware.h").toString()
+      (BeethovenBuild.paths.bindingRoot / "beethoven_hardware.h").toString()
     )
     header.write(f"""
          |// Automatically generated header for Beethoven
@@ -185,7 +188,7 @@ object Generation {
     header.close()
 
     val src = new FileWriter(
-      (BeethovenBuild.top_build_dir / "beethoven_hardware.cc").toString()
+      (BeethovenBuild.paths.bindingRoot / "beethoven_hardware.cc").toString()
     )
     src.write(f"""
          |#include "beethoven_hardware.h"

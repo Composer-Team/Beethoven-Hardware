@@ -3,7 +3,8 @@ package beethoven.Platforms.FPGA.Xilinx.Templates
 import chisel3._
 import chisel3.util.HasBlackBoxInline
 import beethoven.common.CLog2Up
-class BRAMDualClocked(minDepth: Int, minWidth: Int) extends BlackBox {
+import org.chipsalliance.cde.config.Parameters
+class BRAMDualClocked(minDepth: Int, minWidth: Int)(implicit p: Parameters) extends BlackBox {
   val validWidths = Seq(4, 9, 18, 36, 72)
   val widthToValidDepths = Map.from(
     Seq(
