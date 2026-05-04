@@ -21,8 +21,8 @@ class AXI_ClockFIFO(
     synchronization_stages: Int = 3
 ) extends BlackBox {
   override val desiredName = f"AXI_FIFO_a${addrWidth}_d${dataWidth}_i${idWidth}"
-  val dir = os.pwd / "ips"
-  if (!os.exists(dir)) os.makeDir(dir)
+  val dir = BeethovenBuild.IP_DIR
+  if (!os.exists(dir)) os.makeDir.all(dir)
   val io = IO(new Bundle {
     val m_axi_aclk = Input(Bool())
     val m_axi_aresetn = Input(Bool())

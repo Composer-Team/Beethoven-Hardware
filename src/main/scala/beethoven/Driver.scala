@@ -15,7 +15,6 @@ import circt.stage._
 // import freechips.rocketchip.stage._
 import os._
 
-import java.util.regex._
 // import firrtl.transforms.DeadCodeElimination
 import chisel3.stage.ChiselGeneratorAnnotation
 import beethoven.Systems.BeethovenTop
@@ -41,10 +40,6 @@ class BeethovenChipStage extends ChiselStage {
 }
 
 object BeethovenBuild {
-  private val errorNoCR =
-    "Environment variables 'BEETHOVEN_PATH' is not visible and no shell configuration file found.\n" +
-      " Please define or configure IDE to see this enviornment variable\n"
-
   private var crossBoundaryDisableList: Seq[String] = Seq.empty
 
   def disableCrossBoundaryOptimizationForModule(moduleName: String): Unit = {
@@ -85,25 +80,30 @@ object BeethovenBuild {
     postProcessorBundles = postProcessorBundles :+ bundle
   }
 
-  def beethovenRoot(): String = {
-    if (System.getenv("BEETHOVEN_PATH") != null)
-      return System.getenv("BEETHOVEN_PATH")
-    val sh_full = System.getenv("SHELL")
-    if (sh_full == null) throw new Exception(errorNoCR)
-    val sh = sh_full.split("/").last
-    val config = os.read(os.home / f".${sh}rc")
-    val pattern = Pattern.compile("export BEETHOVEN_PATH=([a-zA-Z/.]*)")
-    val matcher = pattern.matcher(config)
-    if (matcher.find()) matcher.group(0).split("=")(1).trim()
-    else throw new Exception(errorNoCR)
+  // -- paths machinery -------------------------------------------------------
+
+  private var optPaths: Option[BeethovenPaths] = None
+
+  /** Resolved on-disk locations for this run, set by [[run]] before any
+    * generator code reads it. Errors clearly if accessed before initialization.
+    */
+  def paths: BeethovenPaths = optPaths.getOrElse(
+    sys.error(
+      "BeethovenBuild.paths accessed before initialization. " +
+        "Invoke beethoven.cli.Run (toml-driven) or BeethovenBuild.run(...) first."
+    )
+  )
+
+  private[beethoven] def setPaths(p: BeethovenPaths): Unit = {
+    optPaths = Some(p)
   }
 
-  val IP_DIR = os.pwd / "ips"
-
-  private val beethovenGenDir: String =
-    beethovenRoot() + "/build/"
-  val top_build_dir = Path(BeethovenBuild.beethovenGenDir)
-  val hw_build_dir = top_build_dir / "hw"
+  /** Vendor IP cache (`target/.cache/ips/`). Holds Xilinx `.xci` files, one
+    * per generated IP. Vivado TCL references vendor IPs by name from the
+    * Vivado project's local `ips/` (created during synth), not by absolute
+    * path here, so the cache root is invisible to TCL.
+    */
+  def IP_DIR: Path = paths.cacheRoot / "ips"
 
   var symbolicMemoryResources: Seq[Path] = Seq.empty
   var sourceList: Seq[Path] = Seq.empty
@@ -115,40 +115,29 @@ object BeethovenBuild {
   private[beethoven] def addSymbolicResource(p: Path): Unit = {
     symbolicMemoryResources = symbolicMemoryResources :+ p
   }
-}
 
-object BuildArgs {
-  private[beethoven] var args: Map[String, Int] = Map.empty
-}
+  // -- run flow --------------------------------------------------------------
 
-abstract class BuildMode
+  /** The build flow. Invoked by [[beethoven.cli.Run]] (the framework's sbt
+    * `mainClass` for toml-driven projects) once the manifest has been parsed
+    * and the platform/config/paths resolved.
+    */
+  def run(
+      config: AcceleratorConfig,
+      platform: Platform,
+      buildMode: BuildMode,
+      paths: BeethovenPaths,
+      userArgs: Map[String, Int] = Map.empty,
+      additional_parameter: Option[PartialFunction[Any, Any]] = None
+  ): Unit = {
+    setPaths(paths)
+    BuildArgs.args = userArgs
 
-object BuildMode {
-  case object Synthesis extends BuildMode
+    val rtlRoot = paths.rtlRoot
+    val hwDir   = rtlRoot / "hw"
 
-  case object Simulation extends BuildMode
-}
-
-class BeethovenBuild(
-    config: AcceleratorConfig,
-    platform: Platform,
-    buildMode: BuildMode = BuildMode.Synthesis,
-    additional_parameter: Option[PartialFunction[Any, Any]] = None
-) {
-  final def main(args: Array[String]): Unit = {
-    //    args.foreach(println(_))
-//    println("Running with " + Runtime.getRuntime.freeMemory() + "B memory")
-//    println(Runtime.getRuntime.maxMemory.toString + "B")
-    BuildArgs.args = Map.from(
-      args.filter(str => str.length >= 2 && str.substring(0, 2) == "-D").map { opt =>
-        val pr = opt.substring(2).split("=")
-        //          println(pr(0) + " " + pr(1))
-        (pr(0), pr(1).toInt)
-      }
-    )
-
-    os.remove.all(hw_build_dir)
-    os.makeDir.all(hw_build_dir)
+    os.remove.all(hwDir)
+    os.makeDir.all(hwDir)
     val configWithBuildMode = {
       val w = new WithBeethoven(platform = platform).alterPartial {
         case BuildModeKey       => buildMode
@@ -160,11 +149,11 @@ class BeethovenBuild(
       }
     }
     beethoven.platform(configWithBuildMode).platformCheck()
-    
+
     (new ChiselStage).execute(
       Array(
         "--target-dir",
-        s"${BeethovenBuild.hw_build_dir}",
+        s"$hwDir",
         "--target",
         "systemverilog",
         "--split-verilog"
@@ -181,9 +170,9 @@ class BeethovenBuild(
       )
     )
 
-    os.remove.all(hw_build_dir / "firrtl_black_box_resource_files.f")
-    val allChiselGeneratedSrcs = WalkPath(hw_build_dir).filter { p =>
-      val rel = p.relativeTo(hw_build_dir).toString()
+    os.remove.all(hwDir / "firrtl_black_box_resource_files.f")
+    val allChiselGeneratedSrcs = WalkPath(hwDir).filter { p =>
+      val rel = p.relativeTo(hwDir).toString()
       !rel.contains("verification/") && os.isFile(p)
     }
 
@@ -203,8 +192,8 @@ class BeethovenBuild(
       }
     }
     val movedSrcs =
-      beethoven.Generation.Annotators.UniqueMv(sourceList, hw_build_dir) :+ {
-        val s = hw_build_dir / "BeethovenAllShifts.v"
+      beethoven.Generation.Annotators.UniqueMv(sourceList, hwDir) :+ {
+        val s = hwDir / "BeethovenAllShifts.v"
         val stxts = shifts.map(a => os.read(a))
         os.write(s, stxts.mkString("\n\n"))
         shifts.foreach(os.remove(_))
@@ -215,7 +204,7 @@ class BeethovenBuild(
       crossBoundaryDisableList = crossBoundaryDisableList :+ slrMapping._1
     }
     if (crossBoundaryDisableList.nonEmpty && buildMode == BuildMode.Synthesis) {
-      CrossBoundaryDisable(crossBoundaryDisableList, top_build_dir)
+      CrossBoundaryDisable(crossBoundaryDisableList, rtlRoot)
     }
     if (
       configWithBuildMode(PlatformKey).platformType == PlatformType.FPGA &&
@@ -224,7 +213,7 @@ class BeethovenBuild(
       val tc_axi = (0 until platform.extMem.nMemoryChannels) map { idx =>
         beethoven.Generation.Annotators.AnnotateXilinxInterface(
           f"M0${idx}_AXI",
-          (hw_build_dir / "BeethovenTop.sv").toString(),
+          (hwDir / "BeethovenTop.sv").toString(),
           XilinxInterface.AXI4
         )
         Some(f"M0${idx}_AXI")
@@ -233,7 +222,7 @@ class BeethovenBuild(
       val tc_front = {
         beethoven.Generation.Annotators.AnnotateXilinxInterface(
           "S00_AXI",
-          (hw_build_dir / "BeethovenTop.sv").toString(),
+          (hwDir / "BeethovenTop.sv").toString(),
           XilinxInterface.AXI4
         )
         Some("S00_AXI")
@@ -242,7 +231,7 @@ class BeethovenBuild(
       val dma_annot = if (platform.isInstanceOf[PlatformHasDMA]) {
         beethoven.Generation.Annotators.AnnotateXilinxInterface(
           "dma",
-          (hw_build_dir / "BeethovenTop.sv").toString(),
+          (hwDir / "BeethovenTop.sv").toString(),
           XilinxInterface.AXI4
         )
         Some("dma")
@@ -252,33 +241,11 @@ class BeethovenBuild(
         .mkString(":")
       Annotators.AnnotateTopClock(
         f"\\(\\* X_INTERFACE_PARAMETER = \"ASSOCIATED_BUSIF $tcs \" \\*\\)",
-        hw_build_dir / "BeethovenTop.sv"
+        hwDir / "BeethovenTop.sv"
       )
     }
 
-    os.makeDir.all(top_build_dir)
-    os.write.over(
-      top_build_dir / "cmake_srcs.cmake",
-      f"""set(SRCS ${movedSrcs.mkString("\n")}\n${chiselGeneratedSrcs.mkString(
-          "\n"
-        )})\n"""
-    )
-//    println("wrote to " + gsrc_dir / "vcs_srcs.in")
-    val allSrcs =
-      (chiselGeneratedSrcs
-        .filter(!os.isDir(_))
-        .toList ++ movedSrcs.filter(a => !os.isDir(a)).toList).filter { p =>
-        val i = p.toString().lastIndexOf(".")
-        // println(p + " " + p.toString().substring(i))
-        p.toString().substring(i) match {
-          case ".v" | ".sv" | ".svh" => true
-          case _                     => false
-        }
-      }
-    os.write.over(
-      top_build_dir / "vcs_srcs.in",
-      allSrcs.mkString("\n")
-    )
+    os.makeDir.all(rtlRoot)
     if (buildMode == BuildMode.Simulation)
       vcs.HarnessGenerator.generateHarness()(configWithBuildMode)
 
@@ -296,3 +263,16 @@ class BeethovenBuild(
     }
   }
 }
+
+object BuildArgs {
+  private[beethoven] var args: Map[String, Int] = Map.empty
+}
+
+abstract class BuildMode
+
+object BuildMode {
+  case object Synthesis extends BuildMode
+
+  case object Simulation extends BuildMode
+}
+

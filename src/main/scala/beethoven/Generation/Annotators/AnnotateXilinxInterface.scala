@@ -54,7 +54,7 @@ s/ *(input|output)(.*)(dma)(.*),\n *(dma)/  \1\2\3\4,\n  \1\2\5/ */
     perform_sed(Seq(copy_directionality_info_cmd, copy_directionality_info_cmd_1wide), fname)
     perform_sed(ensure_areset_input ++ Seq(ensure_clock_input), fname)
     perform_sed(Seq(add_annotation_cmd, add_annotation_cmd_1wide), fname)
-    (os.pwd / "tmp.v").toString()
+    (beethoven.BeethovenBuild.paths.cacheRoot / ".tmp" / "tmp.v").toString()
   }
 
 }

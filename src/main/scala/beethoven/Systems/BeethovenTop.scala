@@ -420,7 +420,7 @@ class TopImpl(outer: BeethovenTop)(implicit p: Parameters)
   Generation.CppGen.Generation.genCPPHeader(outer)
   if (p(BuildModeKey) == BuildMode.Synthesis)
     ConstraintGeneration.writeConstraints(
-      BeethovenBuild.top_build_dir / "user_constraints.xdc"
+      BeethovenBuild.paths.rtlRoot / "user_constraints.xdc"
     )
 
   /** Reset propagation. After the top module has been created, we can find all

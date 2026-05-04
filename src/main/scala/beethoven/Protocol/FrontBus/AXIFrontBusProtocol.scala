@@ -62,7 +62,7 @@ class AXIFrontBusProtocol(nClocks: Int = 1) extends FrontBusProtocol {
     val mems = {
       val dram_ports = mem_front
       val M00_AXI = dram_ports.zipWithIndex.map { case (a, idx) =>
-        val io = IO(AXI4Compat(a.in(0)._1.params))
+        val io = IO(AXI4Compat(a.in(0)._1.params, platform.memBusUserBits))
         io.suggestName(s"M0${idx}_AXI")
         io
       }

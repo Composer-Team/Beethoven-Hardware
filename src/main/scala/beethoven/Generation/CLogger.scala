@@ -6,9 +6,9 @@ import java.io.FileWriter
 
 object CLogger {
   private[beethoven] var emitToStdErr: Boolean = true
-  os.makeDir.all(BeethovenBuild.top_build_dir / "logs")
+  os.makeDir.all(BeethovenBuild.paths.rtlRoot / "logs")
   private val logWriter = new FileWriter(
-    BeethovenBuild.top_build_dir
+    BeethovenBuild.paths.rtlRoot
       .toString() + s"/logs/beethoven_${java.time.LocalDateTime.now().toString}.log"
   )
   def log(message: String): Unit = {

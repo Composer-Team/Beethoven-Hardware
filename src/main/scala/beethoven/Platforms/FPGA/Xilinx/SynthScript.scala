@@ -75,15 +75,11 @@ create_bd_design "design_1"
 startgroup
 create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e soc
 endgroup
-apply_bd_automation -rule xilinx.com:bd_rule:zynq_ultra_ps_e -config {apply_board_pareset "1" } [get_bd_cells soc]
+apply_bd_automation -rule xilinx.com:bd_rule:zynq_ultra_ps_e -config {apply_board_preset "1" } [get_bd_cells soc]
 set_property -dict [list \\
-    CONFIG.PSU__MAXIGP0__DATA_WIDTH {${platform.frontBusBeatBytes * 8}} \\
-    CONFIG.PSU__SAXIGP${slave_AXIGP_datawidth}__DATA_WIDTH {128} \\
     CONFIG.PSU__USE__M_AXI_GP0 {1} \\
     CONFIG.PSU__USE__M_AXI_GP${disabled_master_axi} {0} \\
     CONFIG.PSU__USE__S_AXI_GP0 {1} \\
-    CONFIG.PSU__FPGA_PL0_ENABLE {1} \\
-    CONFIG.PSU__CRL_APB__PL0_REF_CTRL__FREQMHZ {${platform.clockRateMHz.toString}} \\
 ] [get_bd_cells soc]
 add_files ../hw/
 update_compile_order -fileset sources_1
@@ -91,9 +87,7 @@ create_bd_cell -type module -reference ${top_module} top
 
 set my_bd [exec find ${output_dir} -name "design_1.bd"]
 
-connect_bd_net [get_bd_pins top/ARESETn] [get_bd_pins soc/pl_aresetn0]
-
-# Connect together AXI4
+# Connect AXI4. Clk_slave {Auto} also auto-wires top/ARESETn via ASSOCIATED_RESET, so no manual reset connect is needed.
 startgroup
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {Auto} Clk_slave {Auto} \\
   Clk_xbar {Auto} Master {/soc/M_AXI_HPM0_FPD} Slave {/top/S00_AXI} ddr_seg {Auto}             \\
@@ -111,7 +105,7 @@ set_property top design_1_wrapper [current_fileset]
 update_compile_order -fileset sources_1
 
 # Make it so that we can just run synth_design and not have to deal with out-of-context IPs
-areset_target all [get_files $$my_bd]
+reset_target all [get_files $$my_bd]
 export_ip_user_files -of_objects [get_files $$my_bd] -sync -no_script -force -quiet
 set_property synth_checkpoint_mode None [get_files $$my_bd]
 generate_target all [get_files $$my_bd]

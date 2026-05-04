@@ -29,6 +29,9 @@ case class KriaPlatform(
   override val frontBusBeatBytes: Int = 16
   override val frontBusProtocol: FrontBusProtocol = new AXIFrontBusProtocol
 
+  // PS S_AXI_HPC0_FPD uses AWUSER[0]/ARUSER[0] as the CCI coherency hint.
+  override val memBusUserBits: Int = 1
+
   override val physicalMemoryBytes: Long = 4L << 30
   override val memorySpaceAddressBase: Long = 0x0
   override val memorySpaceSizeBytes: BigInt = 1L << 49
@@ -56,10 +59,10 @@ case class KriaPlatform(
         disabled_master_axi = disabled_master_axi,
         slave_AXIGP_datawidth = slave_AXIGP_datawidth
       )(p)
-      s.write_to_dir(BeethovenBuild.top_build_dir / "implementation")
+      s.write_to_dir(BeethovenBuild.paths.rtlRoot / "implementation")
       // this should be safe because no synchronous logic in top level, only instantiations. Vivado doesn't
       // like .sv top-levels
-      os.move(BeethovenBuild.hw_build_dir / "BeethovenTop.sv", BeethovenBuild.hw_build_dir / "BeethovenTop.v")
+      os.move((BeethovenBuild.paths.rtlRoot / "hw") / "BeethovenTop.sv", (BeethovenBuild.paths.rtlRoot / "hw") / "BeethovenTop.v")
     }
   }
 
