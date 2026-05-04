@@ -5,9 +5,17 @@ import os.Path
 
 import scala.jdk.CollectionConverters._
 
-/** Parsed contents of `Beethoven.toml`. The single source of truth for project
+/** Parsed contents of `Beethoven.toml`. The source of truth for project
   * configuration — no JVM property, env var, or CLI flag overrides any field
   * here.
+  *
+  * One deliberate exception: **build mode** (simulation vs synthesis) is
+  * *not* in the manifest. It's a per-invocation choice, supplied as
+  * `--mode <simulation|synthesis>` to [[beethoven.cli.Run]] (or set by the
+  * external `beethoven` CLI based on which command was invoked: `sim`,
+  * `run`, etc.). This keeps the manifest descriptive ("here's the
+  * platform I'm building for") rather than imperative ("build it this
+  * way next time").
   *
   * Manifest *location* resolution (CWD vs walk-up vs explicit flag) lives in
   * [[beethoven.cli.Run]] and the external `beethoven` CLI; this module only
@@ -43,7 +51,6 @@ object Manifest {
 
   final case class PlatformSection(
       target: String,
-      buildMode: BuildMode,
       params: Map[String, Any]
   )
 
@@ -102,21 +109,17 @@ object Manifest {
 
   private def parsePlatform(t: TomlParseResult): PlatformSection = {
     val target = requiredString(t, "platform.target")
-    val mode = requiredString(t, "platform.build-mode") match {
-      case "synthesis"  => BuildMode.Synthesis
-      case "simulation" => BuildMode.Simulation
-      case other =>
-        err(
-          s"[platform] build-mode='$other' is invalid. Use 'synthesis' or 'simulation'."
-        )
-    }
+    // build-mode is no longer in the manifest — it's a per-invocation
+    // arg to cli/Run.scala. Any `[platform].build-mode` left over from
+    // older manifests is silently ignored by tomlj's getTable below
+    // (we only look at known keys + the per-target sub-table).
     val tbl = Option(t.getTable(s"platform.$target"))
     val params: Map[String, Any] = tbl match {
       case None => Map.empty
       case Some(table) =>
         table.keySet.asScala.iterator.map(k => k -> table.get(k)).toMap
     }
-    PlatformSection(target, mode, params)
+    PlatformSection(target, params)
   }
 
   private def parseBuild(t: TomlParseResult): BuildSection = {
@@ -177,9 +180,9 @@ final case class BeethovenPaths(
 )
 
 object BeethovenPaths {
-  def from(m: Manifest): BeethovenPaths = {
+  def from(m: Manifest, buildMode: BuildMode): BeethovenPaths = {
     val outputRoot = m.manifestDir / m.build.outputDir
-    val modeDir = m.platform.buildMode match {
+    val modeDir = buildMode match {
       case BuildMode.Synthesis  => "synthesis"
       case BuildMode.Simulation => "simulation"
     }
