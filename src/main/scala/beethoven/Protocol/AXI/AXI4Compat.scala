@@ -154,7 +154,10 @@ object AXI4Compat {
     s.araddr := m.ar.bits.addr
     s.arburst := m.ar.bits.burst
     // Tie USER all-ones when the port carries user bits — Zynq US+ HPC ports use USER[0]=1 as the CCI coherency hint.
+    // 0-bit case (platforms with memBusUserBits=0) still needs an explicit assignment;
+    // strict firtool 1.131.0 errors on any undriven output sink, even 0-width ones.
     if (s.aruser.getWidth > 0) s.aruser := ((BigInt(1) << s.aruser.getWidth) - 1).U
+    else s.aruser := DontCare
     s.arcache := chosen_cache // 0xF.U //axi4.ar.bits.cache
     s.arregion := 0.U
     s.arsize := m.ar.bits.size
@@ -176,6 +179,7 @@ object AXI4Compat {
     s.awcache := chosen_cache // 0xF.U // axi4.aw.bits.cache
     s.awsize := m.aw.bits.size
     if (s.awuser.getWidth > 0) s.awuser := ((BigInt(1) << s.awuser.getWidth) - 1).U
+    else s.awuser := DontCare
     s.awregion := 0.U
     m.aw.ready := s.awready
     s.awvalid := m.aw.valid
