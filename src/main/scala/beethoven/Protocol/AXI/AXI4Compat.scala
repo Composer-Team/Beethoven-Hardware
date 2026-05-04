@@ -153,7 +153,8 @@ object AXI4Compat {
     s.arprot := chosen_prot // m.ar.bits.prot
     s.araddr := m.ar.bits.addr
     s.arburst := m.ar.bits.burst
-    s.aruser := m.ar.bits.user.asUInt
+    // Tie USER all-ones when the port carries user bits — Zynq US+ HPC ports use USER[0]=1 as the CCI coherency hint.
+    if (s.aruser.getWidth > 0) s.aruser := ((BigInt(1) << s.aruser.getWidth) - 1).U
     s.arcache := chosen_cache // 0xF.U //axi4.ar.bits.cache
     s.arregion := 0.U
     s.arsize := m.ar.bits.size
@@ -174,7 +175,7 @@ object AXI4Compat {
     s.awburst := m.aw.bits.burst
     s.awcache := chosen_cache // 0xF.U // axi4.aw.bits.cache
     s.awsize := m.aw.bits.size
-    s.awuser := 0.U
+    if (s.awuser.getWidth > 0) s.awuser := ((BigInt(1) << s.awuser.getWidth) - 1).U
     s.awregion := 0.U
     m.aw.ready := s.awready
     s.awvalid := m.aw.valid
@@ -232,15 +233,15 @@ object AXI4Compat {
     compat.wready := axi4.w.ready
   }
 
-  def apply(bundleParameters: AXI4BundleParameters): AXI4Compat = {
-//    println(bundleParameters.addrBits)
+  def apply(bundleParameters: AXI4BundleParameters, userBits: Int = 0): AXI4Compat = {
     new AXI4Compat(
       MasterPortParams(
         0,
         BigInt(1) << bundleParameters.addrBits,
         bundleParameters.dataBits / 8,
         bundleParameters.idBits
-      )
+      ),
+      userBits
     )
   }
 

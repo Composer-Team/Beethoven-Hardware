@@ -29,6 +29,9 @@ case class KriaPlatform(
   override val frontBusBeatBytes: Int = 16
   override val frontBusProtocol: FrontBusProtocol = new AXIFrontBusProtocol
 
+  // PS S_AXI_HPC0_FPD uses AWUSER[0]/ARUSER[0] as the CCI coherency hint.
+  override val memBusUserBits: Int = 1
+
   override val physicalMemoryBytes: Long = 4L << 30
   override val memorySpaceAddressBase: Long = 0x0
   override val memorySpaceSizeBytes: BigInt = 1L << 49

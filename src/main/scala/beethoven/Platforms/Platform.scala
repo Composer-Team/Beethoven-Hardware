@@ -52,6 +52,10 @@ abstract class Platform {
   val memoryControllerIDBits: Int
   val memoryControllerBeatBytes: Int
 
+  // Width of AWUSER/ARUSER on the outbound memory AXI port (M00_AXI). Zynq UltraScale+ HPC ports
+  // require width 1 to carry the CCI coherency hint; non-coherent AXI slaves keep this at 0.
+  val memBusUserBits: Int = 0
+
   /** The rest of the parameters either correspond to parameters that are not
     * typically used in generation or are only useful or relevant for extreme
     * fine-tuning. Clock rate can be important for ASIC memory generation so we

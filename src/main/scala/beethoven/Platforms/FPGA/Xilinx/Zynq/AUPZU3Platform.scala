@@ -30,6 +30,9 @@ case class AUPZU3Platform(
   override val frontBusBeatBytes: Int = 16
   override val frontBusProtocol: FrontBusProtocol = new AXIFrontBusProtocol
 
+  // PS S_AXI_HPC0_FPD uses AWUSER[0]/ARUSER[0] as the CCI coherency hint.
+  override val memBusUserBits: Int = 1
+
   assert(
     DRAMSizeGB == 4 || DRAMSizeGB == 8,
     "AUP-ZU3 board only supports 4 or 8 GB of DRAM. Please set DRAMSizeGB as 4 or 8 accordingly."
