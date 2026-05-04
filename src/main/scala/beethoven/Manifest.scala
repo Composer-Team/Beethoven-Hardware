@@ -35,8 +35,7 @@ final case class Manifest(
 object Manifest {
 
   final case class ProjectSection(
-      name: String,
-      version: String
+      name: String
   )
 
   final case class HardwareSection(
@@ -82,8 +81,7 @@ object Manifest {
 
   private def parseProject(t: TomlParseResult): ProjectSection = {
     val name = requiredString(t, "project.name")
-    val version = Option(t.getString("project.version")).getOrElse("0.0.0")
-    ProjectSection(name, version)
+    ProjectSection(name)
   }
 
   private def parseHardware(

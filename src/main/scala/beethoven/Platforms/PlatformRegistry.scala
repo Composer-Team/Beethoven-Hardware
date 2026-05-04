@@ -23,7 +23,7 @@ object PlatformRegistry {
     "kria2",
     "aws-f1",
     "aws-f2",
-    "simulation"
+    "default"
   )
 
   def fromConfig(target: String, params: Map[String, Any]): Platform = {
@@ -59,7 +59,7 @@ object PlatformRegistry {
           remoteUsername = P.strOr("remote-username", "ubuntu")
         )
 
-      case "simulation" =>
+      case "default" =>
         new SimulationPlatform(P.intOr("clock-rate-mhz", 100))
 
       case other =>

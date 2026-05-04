@@ -72,7 +72,9 @@ class BeethovenCommandBundler[T1 <: AccelCommand, T2 <: AccelResponse](
     cio.req.ready := req_state =/= s_done
     when(req_state === s_req_idle) {
       when(cio.req.fire) {
-        val reqsRecieved = if (nReqBeatsRequired == 1) 0.U else reqCounter
+        val reqsRecieved =
+          if (nReqBeatsRequired == 1) 0.U
+          else reqCounter(log2Ceil(nReqBeatsRequired) - 1, 0)
         reqCounter := reqCounter + 1.U
         reqPayload(reqsRecieved) := Cat(
           cio.req.bits.payload1,
