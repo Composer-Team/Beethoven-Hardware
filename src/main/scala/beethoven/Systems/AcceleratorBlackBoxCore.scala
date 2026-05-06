@@ -2,6 +2,7 @@ package beethoven
 
 import beethoven._
 import beethoven.common._
+import beethoven.Generation.VerilogStub.VerilogStubManager
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
@@ -528,18 +529,6 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
     }
   }
 
-  val userBB =
-    f"""
-       |module ${systemParams.name}${bb_macro_params}(
-       |  input clock,
-       |  input areset,
-       |
-       |${getVerilogPorts(allIOs_noreserved)}
-       |);
-       |
-       |endmodule
-       |""".stripMargin
-
   val (portInit, wireDec) = getVerilogModulePortInstantiation(allIOs_noreserved)
 
   val macro_params = {
@@ -596,11 +585,17 @@ class AcceleratorBlackBoxCore(blackboxBuilder: ModuleConstructor)(implicit
   if (!os.exists(custom.sourcePath)) {
     os.makeDir.all(custom.sourcePath)
   }
-  if (!os.exists(bb_fpath)) {
-    os.write(bb_fpath, userBB)
-  } else {
-    println(s"Found '${bb_fpath.toString()}', not overwriting")
-  }
+  // Sync the user's <Name>.v with the framework's port definition.
+  // Strategy: write a fresh stub if absent, splice between markers if
+  // present, fall through to a structural parse + add-markers pass if
+  // the file pre-dates the marker convention. See VerilogStubManager.
+  val syncOutcome = VerilogStubManager.syncCore(
+    bb_fpath,
+    systemParams.name,
+    bb_macro_params,
+    allIOs_noreserved
+  )
+  println(syncOutcome.message)
   val link_loc = (BeethovenBuild.paths.rtlRoot / "hw") / s"${systemParams.name}.v"
   if (os.exists(link_loc) && !os.isLink(link_loc)) {
     throw new Exception(
