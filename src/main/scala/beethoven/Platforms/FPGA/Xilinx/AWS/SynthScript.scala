@@ -7,7 +7,7 @@ object SynthScript {
     os.write.over(
       to_path,
       f"""
-         |source $${HDK_SHELL_DIR}/build/scripts/synth_cl_header.tcl
+         |source $${scripts_dir}/synth_cl_header.tcl
          |
          |
          |###############################################################################
@@ -18,9 +18,9 @@ object SynthScript {
          |
          |# Reading the .sv and .v files, as proper designs would not require reading
          |# .vh, nor .inc files
-         |read_verilog -sv [glob ~/cl_beethoven_top/design/*v]
-         |#set_property file_type {Verilog Header} [get_files ~/cl_beethoven_top/design/cl_beethoven_top_defines.vh]
-         |#set_property is_global_include true     [get_files ~/cl_beethoven_top/design/cl_beethoven_top_defines.vh]
+         |read_verilog -sv [glob $${design_dir}/*v]
+         |#set_property file_type {Verilog Header} [get_files $${design_dir}/cl_beethoven_top_defines.vh]
+         |#set_property is_global_include true     [get_files $${design_dir}/cl_beethoven_top_defines.vh]
          |
          |#---- End of section replaced by User ----
          |
@@ -101,7 +101,7 @@ object SynthScript {
          |read_xdc [ list \\
          |  $${constraints_dir}/cl_synth_user.xdc \\
          |  $${constraints_dir}/cl_timing_user.xdc \\
-            user_constraints.xdc \\
+            $${scripts_dir}/user_constraints.xdc \\
          |]
          |
          |set_property PROCESSING_ORDER LATE [get_files cl_synth_user.xdc]
@@ -138,7 +138,7 @@ object SynthScript {
          |
          |
          |# Common footer
-         |source $${HDK_SHELL_DIR}/build/scripts/synth_cl_footer.tcl
+         |source $${scripts_dir}/synth_cl_footer.tcl
          |""".stripMargin
     )
   }

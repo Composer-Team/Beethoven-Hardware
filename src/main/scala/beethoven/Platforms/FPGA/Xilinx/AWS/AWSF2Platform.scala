@@ -1,8 +1,6 @@
 package beethoven.Platforms.FPGA.Xilinx.AWS
 
 import beethoven.Platforms.FPGA.Xilinx
-import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2Platform.{check_if_setup, initial_setup}
-import beethoven.Platforms.FPGA.Xilinx.{Templates, getTclMacros}
 import beethoven.Platforms.PlatformType.PlatformType
 import beethoven.Platforms._
 import beethoven.Protocol.FrontBus.{AXIFrontBusProtocol, FrontBusProtocol}
@@ -11,30 +9,101 @@ import org.chipsalliance.cde.config._
 import os.Path
 import beethoven.common.tclMacro
 
+import java.nio.file.StandardCopyOption
+
 object AWSF2Platform {
-  def check_if_setup(ip: String, remoteUsername: String): Boolean = {
-    val res =
-      os.proc("ssh", f"$remoteUsername@" + ip, "ls", "~/aws-fpga").call()
-    res.exitCode == 0
+  private val resourceRoot = "/beethoven/FPGA/AWS/F2"
+
+  private val buildScriptResources = Seq(
+    "aws_build_dcp_from_cl.py",
+    "aws_clock_properties.tcl",
+    "aws_gen_clk_constraints.tcl",
+    "build_all.tcl",
+    "build_level_1_cl.tcl",
+    "check_ddr_bram.tcl",
+    "ddr_io_train.tcl",
+    "encrypt.tcl",
+    "placement_fix_v22_1.tcl",
+    "synth_cl_footer.tcl",
+    "synth_cl_header.tcl",
+    "vivado_keyfile.txt",
+    "vivado_keyfile_2024_1.txt",
+    "vivado_vhdl_keyfile.txt",
+    "vivado_vhdl_keyfile_2024_1.txt"
+  )
+
+  private val constraintResources = Seq(
+    "bitstream_physical.xdc",
+    "cl_ddr_timing_aws.xdc",
+    "cl_pins.xdc",
+    "mmcm_cascade.xdc",
+    "small_shell_level_1_fp_cl.xdc",
+    "xdma_shell_level_1_fp_cl.xdc"
+  )
+
+  private def copyResource(relPath: String, dst: os.Path): Unit = {
+    os.makeDir.all(dst / os.up)
+    val stream = Option(getClass.getResourceAsStream(s"$resourceRoot/$relPath"))
+      .getOrElse(sys.error(s"Missing AWS F2 resource: $relPath"))
+    try {
+      java.nio.file.Files.copy(
+        stream,
+        dst.toNIO,
+        StandardCopyOption.REPLACE_EXISTING
+      )
+    } finally {
+      stream.close()
+    }
   }
 
-  /** Bootstrap an AWS instance with Beethoven's deploy scripts.
-    *
-    * @param frameworkRoot
-    *   The root of the Beethoven-Hardware checkout — must contain a `bin/`
-    *   subdirectory. Caller should pass `BeethovenBuild.paths.beethovenHardwareRoot.get`,
-    *   handling the `None` case (project uses maven version, no checkout to
-    *   rsync) appropriately.
-    */
-  def initial_setup(
-      ip: String,
-      remoteUsername: String,
-      frameworkRoot: os.Path
-  ): Unit = {
-    os.proc("rsync", "-azr", f"$frameworkRoot/bin", f"$remoteUsername@$ip:~/bin").call()
-    os.proc("ssh", f"$remoteUsername@$ip", "~/bin/aws/scripts/initial_setup.sh")
-      .call()
+  private def writeBuildWrapper(packageRoot: os.Path): Unit = {
+    val wrapper = packageRoot / "build_beethoven_f2.sh"
+    os.write.over(
+      wrapper,
+      """#!/usr/bin/env bash
+        |set -euo pipefail
+        |
+        |AWS_FPGA_REPO_DIR="${BEETHOVEN_AWS_FPGA_REPO_DIR:-$HOME/aws-fpga}"
+        |export AWS_FPGA_REPO_DIR
+        |
+        |if [[ ! -d "$AWS_FPGA_REPO_DIR" ]]; then
+        |  git clone --branch f2 https://github.com/aws/aws-fpga.git "$AWS_FPGA_REPO_DIR"
+        |fi
+        |
+        |# hdk_setup.sh sets HDK_SHELL_DIR, HDK_SHELL_DESIGN_DIR, HDK_IP_SRC_DIR,
+        |# HDK_BD_SRC_DIR, and the other AWS F2 Vivado build environment variables.
+        |# It may download AWS shell collateral the first time it runs.
+        |pushd "$AWS_FPGA_REPO_DIR" >/dev/null
+        |source hdk_setup.sh
+        |popd >/dev/null
+        |
+        |SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        |export CL_DIR="$SCRIPT_DIR"
+        |
+        |cd "$CL_DIR/build/scripts"
+        |cmd=(./aws_build_dcp_from_cl.py -c cl_beethoven_top --mode small_shell "$@")
+        |printf 'Executing:'
+        |printf ' %q' "${cmd[@]}"
+        |printf '\n'
+        |"${cmd[@]}"
+        |""".stripMargin
+    )
+    os.proc("chmod", "+x", wrapper.toString()).call()
   }
+
+  private def copyAwsBuildResources(packageRoot: os.Path): Unit = {
+    val scriptsDir = packageRoot / "build" / "scripts"
+    val constraintsDir = packageRoot / "build" / "constraints"
+    buildScriptResources.foreach { f =>
+      copyResource(s"build/scripts/$f", scriptsDir / f)
+    }
+    os.proc("chmod", "+x", (scriptsDir / "aws_build_dcp_from_cl.py").toString()).call()
+    constraintResources.foreach { f =>
+      copyResource(s"build/constraints/$f", constraintsDir / f)
+    }
+    copyResource("design/cl_id_defines.vh", packageRoot / "design" / "cl_id_defines.vh")
+  }
+
 }
 
 class AWSF2Platform(val remoteUsername: String = "ubuntu")
@@ -81,13 +150,18 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
 
   override def postProcessorMacro(c: Parameters, paths: Seq[Path]): Unit = {
     if (c(BuildModeKey) == BuildMode.Synthesis) {
-      // rename beethoven.v to beethoven.sv
       val aws_dir = BeethovenBuild.paths.rtlRoot / "aws"
-      val gen_dir = aws_dir / "cl_beethoven_top" / "generated-src"
-      val run_dir = aws_dir / "cl_beethoven_top" / "build" / "scripts"
-      val top_file = gen_dir / "beethoven.sv"
-      os.makeDir.all(gen_dir)
-      os.makeDir.all(run_dir)
+      val packageRoot = aws_dir / "cl_beethoven_top"
+      val design_dir = packageRoot / "design"
+      val scripts_dir = packageRoot / "build" / "scripts"
+      val constraints_dir = packageRoot / "build" / "constraints"
+      val top_file = design_dir / "beethoven.sv"
+
+      os.remove.all(packageRoot)
+      os.makeDir.all(design_dir)
+      os.makeDir.all(scripts_dir)
+      os.makeDir.all(constraints_dir)
+
       os.proc("touch", top_file.toString()).call()
       Shell.write(
         (BeethovenBuild.paths.rtlRoot / "hw") / "cl_beethoven_top.sv",
@@ -96,30 +170,38 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
       Shell.write_header(
         (BeethovenBuild.paths.rtlRoot / "hw") / "cl_beethoven_top_defines.vh"
       )(c)
+      os.write.over(
+        BeethovenBuild.paths.rtlRoot / "combined_pnr.xdc",
+        """
+          |source ${CL_DIR}/build/constraints/small_shell_level_1_fp_cl.xdc
+          |source ${CL_DIR}/build/scripts/user_constraints.xdc
+          |""".stripMargin
+      )
 
-      os.copy.over((BeethovenBuild.paths.rtlRoot / "hw"), gen_dir)
-      os.move(gen_dir / "BeethovenTop.sv", top_file)
+      os.copy.over((BeethovenBuild.paths.rtlRoot / "hw"), design_dir)
+      os.move(design_dir / "BeethovenTop.sv", top_file)
       os.walk(BeethovenBuild.paths.rtlRoot, followLinks = false, maxDepth = 1)
         .foreach(p =>
           if (
             p.last.endsWith(".cc") || p.last.endsWith(".h") || p.last
               .endsWith(".xdc")
           ) {
-//            println("copying " + p + " to " + gen_dir / p.last)
-            os.copy.over(p, gen_dir / p.last)
+//            println("copying " + p + " to " + design_dir / p.last)
+            os.copy.over(p, design_dir / p.last)
           }
         )
+      AWSF2Platform.copyAwsBuildResources(packageRoot)
       val hdl_srcs = os
-        .walk(gen_dir)
+        .walk(design_dir)
         .filter(p =>
           (p.last.endsWith(".v") || p.last.endsWith(".sv")) && !(p.last
             .contains("VCS"))
         )
         .map { fname =>
-          fname.relativeTo(run_dir)
+          fname.relativeTo(design_dir)
         }
       os.write.over(
-        run_dir / "src_list.tcl",
+        design_dir / "src_list.tcl",
         f"set hdl_sources [list ${hdl_srcs.mkString(" \\\n")} ]"
       )
 
@@ -140,127 +222,20 @@ class AWSF2Platform(val remoteUsername: String = "ubuntu")
           |""".stripMargin
       )
       Xilinx.AWS.SynthScript.write(
-        BeethovenBuild.paths.rtlRoot / "synth_cl_beethoven_top.tcl"
+        scripts_dir / "synth_cl_beethoven_top.tcl"
       )
+      os.copy.over(BeethovenBuild.paths.rtlRoot / "user_constraints.xdc", scripts_dir / "user_constraints.xdc")
+      os.write.over(constraints_dir / "cl_synth_user.xdc", "")
+      os.write.over(constraints_dir / "cl_timing_user.xdc", "")
       os.write.over(
-        BeethovenBuild.paths.rtlRoot / "combined_pnr.xdc",
-        f"""
-        |source ~/aws-fpga/hdk/common/shell_stable/build/constraints/small_shell_level_1_fp_cl.xdc
-        |source ~/cl_beethoven_top/build/scripts/user_constraints.xdc
-        |"""
+        constraints_dir / "small_shell_cl_pnr_user.xdc",
+        os.read(constraints_dir / "small_shell_level_1_fp_cl.xdc") + "\n" +
+          os.read(scripts_dir / "user_constraints.xdc")
       )
+      AWSF2Platform.writeBuildWrapper(packageRoot)
 
-      // get aws address from stdio input
-      println("Compilation is done.")
-      println(
-        "Enter the AWS F2 instance EC2 instance IP address (blank if store locally) :"
-      )
-      var in = scala.io.StdIn.readLine().trim
-      if (in.nonEmpty) {
-        var fail = true
-        while (fail) {
-          fail = false
-          try {
-            println("Transfering...")
-            // should be using the Ubuntu Xilinx Vivado 2024.1 image which has username ubunutu
-            os.proc(
-              "ssh",
-              f"$remoteUsername@$in",
-              "rm",
-              "-rf",
-              "~/cl_beethoven_top/design/generated-src",
-              "~/cl_beethoven_top/design",
-              "~/cl_beethoven_top/generated-src",
-              "&&",
-              "mkdir",
-              "-p",
-              "~/cl_beethoven_top"
-            ).call()
-            os.proc(
-              "rsync",
-              "-avz",
-              f"$gen_dir",
-              f"$remoteUsername@$in:~/cl_beethoven_top/"
-            ).call()
-            os.proc(
-              "ssh",
-              f"$remoteUsername@$in",
-              "mkdir",
-              "-p",
-              "~/cl_beethoven_top/build/scripts/",
-              "&&",
-              "mkdir",
-              "-p",
-              "~/cl_beethoven_top/build/constraints",
-              "&&",
-              "mv",
-              "~/cl_beethoven_top/generated-src",
-              "~/cl_beethoven_top/design",
-              "&&",
-              "cp",
-              "-r",
-              "~/aws-fpga/hdk/common/shell_stable/build/scripts ~/cl_beethoven_top/build/",
-              "&&",
-              "cp",
-              "-r",
-              "~/aws-fpga/hdk/cl/examples/CL_TEMPLATE/design/cl_id_defines.vh ~/cl_beethoven_top/design/",
-              "&&",
-              // "cp", "~/aws-fpga/hdk/common/shell_stable/build/constraints/small_shell_level_1_fp_cl.xdc", "~/cl_beethoven_top/build/constraints/small_shell_cl_pnr_user.xdc", "&&",
-              "touch",
-              "~/cl_beethoven_top/build/constraints/cl_synth_user.xdc",
-              "&&",
-              "touch",
-              "~/cl_beethoven_top/build/constraints/cl_timing_user.xdc"
-            ).call()
-            os.proc(
-              "rsync",
-              "-avz",
-              (run_dir / "src_list.tcl").toString(),
-              f"$remoteUsername@$in:~/cl_beethoven_top/design/"
-            ).call()
-            os.proc(
-              "rsync",
-              "-avz",
-              (BeethovenBuild.paths.rtlRoot / "synth_cl_beethoven_top.tcl")
-                .toString(),
-              f"$remoteUsername@$in:~/cl_beethoven_top/build/scripts/"
-            ).call()
-            os.proc(
-              "rsync",
-              "-avz",
-              (BeethovenBuild.paths.rtlRoot / "user_constraints.xdc")
-                .toString(),
-              f"$remoteUsername@$in:~/cl_beethoven_top/build/scripts/"
-            ).call()
-            val dst_file =
-              "~/cl_beethoven_top/build/constraints/small_shell_cl_pnr_user.xdc"
-            os.proc(
-              "ssh",
-              f"$remoteUsername@$in",
-              f"cat ~/aws-fpga/hdk/common/shell_stable/build/constraints/small_shell_level_1_fp_cl.xdc > $dst_file &&" +
-                f"cat ~/cl_beethoven_top/build/scripts/user_constraints.xdc >> $dst_file"
-            ).call()
-          } catch {
-            case e: Exception =>
-              println(e)
-              println(
-                "Error in rsync. Will try again with new IP address (blank if give up): "
-              )
-              in = scala.io.StdIn.readLine().trim
-              fail = true
-          }
-        }
-        if (!check_if_setup(in, remoteUsername)) {
-          val frameworkRoot = BeethovenBuild.paths.beethovenHardwareRoot.getOrElse(
-            sys.error(
-              "AWS F2 deploy needs a local Beethoven-Hardware checkout. " +
-                "Set [hardware.beethoven-hardware] path in Beethoven.toml " +
-                "(or BEETHOVEN_PATH in the legacy flow)."
-            )
-          )
-          initial_setup(in, remoteUsername, frameworkRoot)
-        }
-      }
+      println(s"AWS F2 package generated at $packageRoot")
+      println(s"Upload it with: rsync -avz $packageRoot/ $remoteUsername@<host>:~/cl_beethoven_top/")
     }
   }
 
