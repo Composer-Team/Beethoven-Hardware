@@ -81,9 +81,13 @@ class LightweightReader(
   val storageFill = Reg(UInt(log2Up(beatsPerDat).W))
   val storageFilled = RegInit(false.B)
   val beatsLeft = Reg(UInt(log2Up(beatsPerDat + 1).W))
+  val txBeatsLeft = Reg(UInt(log2Up(largeTxNBeats + 1).W))
   io.channel.data.valid := storageFilled
   io.channel.data.bits := Cat(storage.reverse)
 
+  when(io.channel.data.fire) {
+    storageFilled := false.B
+  }
   tl_out.d.ready := !storageFilled
   when(tl_out.d.fire) {
     storage(storageFill) := tl_out.d.bits.data
@@ -93,6 +97,11 @@ class LightweightReader(
       beatsLeft := beatsPerDat.U
       storageFilled := true.B
       storageFill := 0.U
+    }
+    when(txBeatsLeft === 0.U) {
+      sourceBusy := false.B
+    }.otherwise {
+      txBeatsLeft := txBeatsLeft - 1.U
     }
   }
 
@@ -129,6 +138,7 @@ class LightweightReader(
           storageFill := 0.U
           addr := addr + beatBytes.U
           len := len - beatBytes.U
+          txBeatsLeft := 0.U
           sourceBusy := true.B
         }
       }.otherwise {
@@ -144,6 +154,7 @@ class LightweightReader(
           addr := addr + largestRead.U
           len := len - largestRead.U
           storageFill := 0.U
+          txBeatsLeft := (largeTxNBeats - 1).U
           sourceBusy := true.B
         }
       }

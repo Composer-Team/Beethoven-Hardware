@@ -93,8 +93,9 @@ class MemoryScratchpad(csp: ScratchpadConfig)(implicit p: Parameters)
 
   lazy val module = new ScratchpadImpl(csp, this)
   val forceCustom = true
-  val useLowResourceReader = csp.dataWidthBits
-    .intValue() > channelWidthBytes * 8 * platform.prefetchSourceMultiplicity
+  val useLowResourceReader =
+    csp.dataWidthBits.intValue() > channelWidthBytes * 8 * platform.prefetchSourceMultiplicity ||
+      csp.dataWidthBits.intValue() * csp.features.nBanks > channelWidthBytes * 8
   if (useLowResourceReader && !has_warned) {
     has_warned = true
     System.err.println(
@@ -251,6 +252,25 @@ class ScratchpadImpl(csp: ScratchpadConfig, outer: MemoryScratchpad)
   )
   if (outer.mem_reader.isDefined) {
 
+    val readerDataBits = outer.mem_reader.get.out(0)._1.params.dataBits
+    val flatPackDataBits = dWidth * datasPerCacheLine
+    val beatsPerScratchpadEntry =
+      if (flatPackDataBits > readerDataBits) {
+        require(
+          flatPackDataBits % readerDataBits == 0,
+          "Wide flat-packed scratchpad rows must be an integer number of memory beats"
+        )
+        val beats = flatPackDataBits / readerDataBits
+        require(
+          (beats & (beats - 1)) == 0,
+          "Wide flat-packed scratchpad rows must use a power-of-two number of memory beats"
+        )
+        beats
+      } else 1
+    val flatPackLoaderIdxBits =
+      if (flatPackDataBits > readerDataBits) log2Up(realNRows * beatsPerScratchpadEntry)
+      else scReqBits - CLog2Up(datasPerCacheLine)
+
     val swWordSize = specialization match {
       case psw: PackedSubwordScratchpadConfig =>
         psw.wordSizeBits
@@ -270,14 +290,10 @@ class ScratchpadImpl(csp: ScratchpadConfig, outer: MemoryScratchpad)
         )
       case _: FlatPackScratchpadConfig =>
         new ScratchpadPackedSubwordLoader(
-          dWidth * datasPerCacheLine,
-          scReqBits - CLog2Up(datasPerCacheLine),
-          outer.mem_reader.get.out(0)._1.params.dataBits,
-          outer.mem_reader.get
-            .out(0)
-            ._1
-            .params
-            .dataBits / (dWidth * datasPerCacheLine)
+          flatPackDataBits,
+          flatPackLoaderIdxBits,
+          readerDataBits,
+          Math.max(1, readerDataBits / flatPackDataBits)
         )
     })
 
@@ -295,14 +311,14 @@ class ScratchpadImpl(csp: ScratchpadConfig, outer: MemoryScratchpad)
     }
 
     loader.io.cache_block_in.bits.len := maxTxLength.U
-    val idxCounter = Reg(UInt(log2Up(realNRows).W))
+    val idxCounter = Reg(UInt(log2Up(realNRows * beatsPerScratchpadEntry).W))
 
     def linearReadInc(): Unit = {
       when(loader.io.cache_block_in.fire) {
         idxCounter := idxCounter + loader.spEntriesPerBeat.U
       }
       when(req.init.fire) {
-        idxCounter := req.init.bits.scAddr
+        idxCounter := req.init.bits.scAddr * beatsPerScratchpadEntry.U
       }
       loader.io.cache_block_in.bits.idxBase := idxCounter
     }
