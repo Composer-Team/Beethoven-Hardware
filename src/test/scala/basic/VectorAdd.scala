@@ -1,11 +1,6 @@
 package basic
 
-import beethoven.{
-  AcceleratorConfig,
-  AcceleratorSystemConfig,
-  ReadChannelConfig,
-  WriteChannelConfig
-}
+import beethoven._
 import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2Platform
 import chisel3._
 import chisel3.util._
@@ -16,6 +11,7 @@ import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF1Platform
 import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2XDMAWorkarounds
 import beethoven.Platforms.FPGA.Xilinx.AWS.DMAHelperConfig
 import beethoven.Platforms.FPGA.Xilinx.AWS.MemsetHelperConfig
+import beethovenTest.TestPaths
 
 class VectorAdd extends Module {
   val io = IO(new Bundle {
@@ -148,9 +144,14 @@ class VecVerilogConfig
       )
     )
 
-object VecVerilogRunner
-    extends BeethovenBuild(
-      new VecVerilogConfig(),
+object VecVerilogRunner {
+  def main(args: Array[String]): Unit = {
+    val buildMode = BuildMode.Synthesis
+    BeethovenBuild.run(
+      config = new VecVerilogConfig(),
       platform = new KriaPlatform,
-      buildMode = BuildMode.Synthesis
+      buildMode = buildMode,
+      paths = TestPaths.local("VecVerilogRunner", buildMode)
     )
+  }
+}

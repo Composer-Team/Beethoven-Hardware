@@ -8,6 +8,7 @@ import systolic.Constants.data_width_bits
 import systolic.Constants.int_bits
 import systolic.Constants.frac_bits
 import beethoven.Generation.CppGeneration
+import beethovenTest.TestPaths
 
 class SystolicArrayCmd extends AccelCommand("matmul") {
   val wgt_addr = UInt(64.W)
@@ -63,20 +64,26 @@ class SystolicArrayConfig(nCores: Int)
       )
     )
 
-object SystolicArrayConfig
-    extends BeethovenBuild(
-      {
-        CppGeneration.addPreprocessorDefinition(
-          Seq(
-            ("DATA_WIDTH_BYTES", Constants.data_width_bytes),
-            ("FRAC_BITS", frac_bits),
-            ("INT_BITS", int_bits),
-            ("SYSTOLIC_ARRAY_DIM", systolic_array_dim)
-          )
+object SystolicArrayConfig {
+  def main(args: Array[String]): Unit = {
+    val buildMode = BuildMode.Simulation
+    val config = {
+      CppGeneration.addPreprocessorDefinition(
+        Seq(
+          ("DATA_WIDTH_BYTES", Constants.data_width_bytes),
+          ("FRAC_BITS", frac_bits),
+          ("INT_BITS", int_bits),
+          ("SYSTOLIC_ARRAY_DIM", systolic_array_dim)
         )
+      )
 
-        new SystolicArrayConfig(1)
-      },
+      new SystolicArrayConfig(1)
+    }
+    BeethovenBuild.run(
+      config = config,
       platform = new AWSF2Platform,
-      buildMode = BuildMode.Simulation
+      buildMode = buildMode,
+      paths = TestPaths.local("SystolicArrayConfig-verilog", buildMode)
     )
+  }
+}

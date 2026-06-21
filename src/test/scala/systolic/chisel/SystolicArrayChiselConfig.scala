@@ -4,6 +4,7 @@ import chisel3._
 import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2Platform
 import systolic.Constants._
 import beethoven.Generation.CppGeneration
+import beethovenTest.TestPaths
 
 class SystolicArrayCmd extends AccelCommand("matmul") {
   val wgt_addr = UInt(64.W)
@@ -35,19 +36,25 @@ class SystolicArrayChiselConfig(nCores: Int)
       )
     )
 
-object SystolicArrayConfig
-    extends BeethovenBuild(
-      {
-        CppGeneration.addPreprocessorDefinition(
-          Seq(
-            ("DATA_WIDTH_BYTES", data_width_bytes),
-            ("FRAC_BITS", frac_bits),
-            ("INT_BITS", int_bits),
-            ("SYSTOLIC_ARRAY_DIM", systolic_array_dim)
-          )
+object SystolicArrayConfig {
+  def main(args: Array[String]): Unit = {
+    val buildMode = BuildMode.Synthesis
+    val config = {
+      CppGeneration.addPreprocessorDefinition(
+        Seq(
+          ("DATA_WIDTH_BYTES", data_width_bytes),
+          ("FRAC_BITS", frac_bits),
+          ("INT_BITS", int_bits),
+          ("SYSTOLIC_ARRAY_DIM", systolic_array_dim)
         )
-        new SystolicArrayChiselConfig(1)
-      },
+      )
+      new SystolicArrayChiselConfig(1)
+    }
+    BeethovenBuild.run(
+      config = config,
       platform = new KriaPlatform,
-      buildMode = BuildMode.Synthesis
+      buildMode = buildMode,
+      paths = TestPaths.local("SystolicArrayConfig-chisel", buildMode)
     )
+  }
+}

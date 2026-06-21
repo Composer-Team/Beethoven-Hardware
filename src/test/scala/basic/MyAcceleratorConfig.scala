@@ -1,13 +1,9 @@
 package basic
 
-import beethoven.{AcceleratorConfig, AcceleratorSystemConfig, ReadChannelConfig, WriteChannelConfig}
-import beethoven.Platforms.FPGA.Xilinx.AWS.{
-  AWSF2Platform,
-  DMAHelperConfig,
-  MemsetHelper,
-  MemsetHelperConfig
-}
 import beethoven._
+import beethoven.Platforms.FPGA.Xilinx.AWS._
+import beethoven.common._
+import beethovenTest.TestPaths
 import chisel3._
 
 class MyAcceleratorConfig(nCores: Int = 1)
@@ -25,30 +21,50 @@ class MyAcceleratorConfig(nCores: Int = 1)
       }
     )
 
-object MyAcceleratorKria
-    extends BeethovenBuild(
-      new MyAcceleratorConfig,
-      buildMode = BuildMode.Synthesis,
-      platform = new KriaPlatform()
+object MyAcceleratorKria {
+  def main(args: Array[String]): Unit = {
+    val buildMode = BuildMode.Synthesis
+    BeethovenBuild.run(
+      config = new MyAcceleratorConfig,
+      platform = new KriaPlatform(),
+      buildMode = buildMode,
+      paths = TestPaths.local("MyAcceleratorKria", buildMode)
     )
+  }
+}
 
-object MyAcceleratorKriaClocks
-    extends BeethovenBuild(
-      new MyAcceleratorConfig,
-      buildMode = BuildMode.Synthesis,
-      platform = new Kria2Platform()
+object MyAcceleratorKriaClocks {
+  def main(args: Array[String]): Unit = {
+    val buildMode = BuildMode.Synthesis
+    BeethovenBuild.run(
+      config = new MyAcceleratorConfig,
+      platform = new Kria2Platform(),
+      buildMode = buildMode,
+      paths = TestPaths.local("MyAcceleratorKriaClocks", buildMode)
     )
+  }
+}
 
-object MyAcceleratorF2
-    extends BeethovenBuild(
-      new MyAcceleratorConfig(3),
-      buildMode = BuildMode.Simulation,
-      platform = new AWSF2Platform()
+object MyAcceleratorF2 {
+  def main(args: Array[String]): Unit = {
+    val buildMode = BuildMode.Simulation
+    BeethovenBuild.run(
+      config = new MyAcceleratorConfig(3),
+      platform = new AWSF2Platform(),
+      buildMode = buildMode,
+      paths = TestPaths.local("MyAcceleratorF2", buildMode)
     )
+  }
+}
 
-object VectorAddConfig
-    extends BeethovenBuild(
-      new VecAddConfig,
-      buildMode = BuildMode.Synthesis,
-      platform = new AWSF2Platform()
+object VectorAddConfig {
+  def main(args: Array[String]): Unit = {
+    val buildMode = BuildMode.Synthesis
+    BeethovenBuild.run(
+      config = new VecAddConfig,
+      platform = new AWSF2Platform(),
+      buildMode = buildMode,
+      paths = TestPaths.local("VectorAddConfig", buildMode)
     )
+  }
+}

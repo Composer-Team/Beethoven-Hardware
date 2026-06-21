@@ -4,10 +4,7 @@ import beethoven.Floorplanning.LazyModuleWithSLRs.LazyModuleWithFloorplan
 import org.chipsalliance.cde.config._
 import chisel3._
 import chisel3.util._
-import beethoven.Floorplanning.{
-  ConstraintGeneration,
-  LazyModuleWithSLRs
-}
+import beethoven.Floorplanning.{ConstraintGeneration, LazyModuleWithSLRs}
 import beethoven._
 import beethoven.Systems.BeethovenTop._
 import beethoven.Platforms._
@@ -27,11 +24,12 @@ import org.chipsalliance.diplomacy.tilelink._
 
 import scala.annotation.tailrec
 import scala.language.implicitConversions
+import beethoven.MemoryStreams.LazyTLTieOff
 
 object BeethovenTop {
 
-  /** Get the address mask given the desired address space size (per DIMM) in
-    * bytes and the mask for channel bits
+  /** Get the address mask given the desired address space size (per DIMM) in bytes and the mask for
+    * channel bits
     *
     * @param addrBits
     *   total number of address bits per DIMM
@@ -135,10 +133,11 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
   // Generate accelerator SoC
   val devices: List[Subdevice] = platform.physicalDevices.map { dev =>
     val lm = LazyModuleWithFloorplan(
-      new Subdevice(dev.identifier)(p
-      // .alterPartial {
+      new Subdevice(dev.identifier)(
+        p
+        // .alterPartial {
         // case TileVisibilityNodeKey => rocc_front
-      // }
+        // }
       ),
       dev.identifier,
       f"beethovenDevice${dev.identifier}"
@@ -155,8 +154,7 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
     val r_map = devices.flatMap { d =>
       val on_chip = d.r_nodes.map(b => (b, d.deviceId)).map { case (src, idx) =>
         val checkProt = TLSupportChecker(
-          a =>
-            a.master.allSupportGet.max > 0 ^ a.master.allSupportPutFull.max > 0,
+          a => a.master.allSupportGet.max > 0 ^ a.master.allSupportPutFull.max > 0,
           "Protocol Exclusive: rmap top"
         )
         checkProt := src
@@ -170,8 +168,7 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
             .locationDeviceID == d.deviceId
         ) {
           val checkProt = TLSupportChecker(
-            a =>
-              a.master.allSupportGet.max > 0 && a.master.allSupportPutFull.max == 0,
+            a => a.master.allSupportGet.max > 0 && a.master.allSupportPutFull.max == 0,
             "Protocol Exclusive: dma front r"
           )
           checkProt := frontDMA_r.get
@@ -185,8 +182,7 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
     val w_map = devices.flatMap { d =>
       val on_chip = d.w_nodes.map(b => (b, d.deviceId)).map { case (src, idx) =>
         val checkProt = TLSupportChecker(
-          a =>
-            a.master.allSupportGet.max == 0 && a.master.allSupportPutFull.max > 0,
+          a => a.master.allSupportGet.max == 0 && a.master.allSupportPutFull.max > 0,
           "Protocol Exclusive: wmap top"
         )
         checkProt := src
@@ -200,8 +196,7 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
             .locationDeviceID == d.deviceId
         ) {
           val checkProt = TLSupportChecker(
-            a =>
-              a.master.allSupportGet.max == 0 && a.master.allSupportPutFull.max > 0,
+            a => a.master.allSupportGet.max == 0 && a.master.allSupportPutFull.max > 0,
             "Protocol Exclusive: dma front w"
           )
           checkProt := frontDMA_w.get
@@ -218,8 +213,7 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
     val Seq(r_commits, w_commits) = Seq(r_map, w_map).map { carry_init =>
       val carry_checks = carry_init.map { case (src, i) =>
         val checkProt = TLSupportChecker(
-          a =>
-            a.master.allSupportGet.max > 0 ^ a.master.allSupportPutFull.max > 0,
+          a => a.master.allSupportGet.max > 0 ^ a.master.allSupportPutFull.max > 0,
           "Protocol exclusive: preCheck"
         )
         checkProt := src
@@ -237,8 +231,7 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
           k,
           v.map { src =>
             val checkProt = TLSupportChecker(
-              a =>
-                a.master.allSupportGet.max > 0 ^ a.master.allSupportPutFull.max > 0,
+              a => a.master.allSupportGet.max > 0 ^ a.master.allSupportPutFull.max > 0,
               "Protocol exclusive: postCheck"
             )
             checkProt := src
@@ -261,17 +254,10 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
           val w_exist = is_map_nonempty(w_commits)
 
           if (r_exist || w_exist) {
-            val sTLToAXI =
-              if (r_exist && w_exist)
-                LazyModuleWithFloorplan(
-                  new TLToAXI4SRW(),
-                  pmi.locationDeviceID
-                ).node
-              else
-                LazyModuleWithFloorplan(
-                  new TLToAXI4(),
-                  pmi.locationDeviceID
-                ).node
+            val sTLToAXI = LazyModuleWithFloorplan(
+              new TLToAXI4SRW(),
+              pmi.locationDeviceID
+            ).node
 
             Seq((r_commits, "r"), (w_commits, "w"))
               .filter(a => is_map_nonempty(a._1))
@@ -300,6 +286,10 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
                   1 << platform.memoryControllerIDBits
                 ) := check("pre") := xbar_s
               }
+            if (!r_exist)
+              sTLToAXI := LazyTLTieOff(true)
+            if (!w_exist)
+              sTLToAXI := LazyTLTieOff(false)
             mem := AXI4Buffer() := sTLToAXI
           } else {
             mem := LazyModule(new TieOff()).node
@@ -401,8 +391,7 @@ class BeethovenTop(implicit p: Parameters) extends LazyModule {
   lazy val module = new TopImpl(this)
 }
 
-class TopImpl(outer: BeethovenTop)(implicit p: Parameters)
-    extends LazyRawModuleImp(outer) {
+class TopImpl(outer: BeethovenTop)(implicit p: Parameters) extends LazyRawModuleImp(outer) {
   override def provideImplicitClockToLazyChildren: Boolean = true
   val full_config =
     platform.frontBusProtocol.deriveTopIOs(outer.front_bus_config.alterPartial({
@@ -423,8 +412,8 @@ class TopImpl(outer: BeethovenTop)(implicit p: Parameters)
       BeethovenBuild.paths.rtlRoot / "user_constraints.xdc"
     )
 
-  /** Reset propagation. After the top module has been created, we can find all
-    * of the submodules and on which SLR they belong.
+  /** Reset propagation. After the top module has been created, we can find all of the submodules
+    * and on which SLR they belong.
     */
 
   // areset propagation

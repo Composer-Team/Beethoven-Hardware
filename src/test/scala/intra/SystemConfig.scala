@@ -4,6 +4,7 @@ import beethoven._
 import beethoven.Platforms.FPGA.Xilinx.AWS.AWSF2Platform
 import beethoven.Platforms.FPGA.Xilinx.AWS.DMAHelperConfig
 import beethoven.Platforms.FPGA.Xilinx.AWS.MemsetHelperConfig
+import beethovenTest.TestPaths
 import intra.DispatcherCore
 
 class SystemConfig(numCores: Int,
@@ -53,14 +54,38 @@ class SystemConfig(numCores: Int,
     new DMAHelperConfig, new MemsetHelperConfig(4))
 })
     
-object SystemConfig extends BeethovenBuild(new SystemConfig(6),
-  buildMode = BuildMode.Synthesis,
-  platform = new AWSF2Platform())
+object SystemConfig {
+  def main(args: Array[String]): Unit = {
+    val buildMode = BuildMode.Synthesis
+    BeethovenBuild.run(
+      config = new SystemConfig(6),
+      platform = new AWSF2Platform(),
+      buildMode = buildMode,
+      paths = TestPaths.local("SystemConfig", buildMode)
+    )
+  }
+}
 
-object SystemConfig2 extends BeethovenBuild(new SystemConfig(1),
-  buildMode = BuildMode.Synthesis,
-  platform = new AWSF2Platform())
+object SystemConfig2 {
+  def main(args: Array[String]): Unit = {
+    val buildMode = BuildMode.Synthesis
+    BeethovenBuild.run(
+      config = new SystemConfig(1),
+      platform = new AWSF2Platform(),
+      buildMode = buildMode,
+      paths = TestPaths.local("SystemConfig2", buildMode)
+    )
+  }
+}
 
-object SystemConfigKria extends BeethovenBuild(new SystemConfig(1),
-buildMode = BuildMode.Synthesis,
-platform = new KriaPlatform())
+object SystemConfigKria {
+  def main(args: Array[String]): Unit = {
+    val buildMode = BuildMode.Synthesis
+    BeethovenBuild.run(
+      config = new SystemConfig(1),
+      platform = new KriaPlatform(),
+      buildMode = buildMode,
+      paths = TestPaths.local("SystemConfigKria", buildMode)
+    )
+  }
+}
