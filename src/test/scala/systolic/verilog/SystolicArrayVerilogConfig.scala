@@ -83,7 +83,7 @@ object SystolicArrayConfig {
       config = config,
       platform = new AWSF2Platform,
       buildMode = buildMode,
-      paths = TestPaths.local("SystolicArrayConfig-verilog", buildMode)
+      paths = Manifest.local("SystolicArrayConfig-verilog", buildMode)
     )
   }
 }

@@ -77,6 +77,20 @@ object Manifest {
     )
   }
 
+  def local(name: String, mode: BuildMode): BeethovenPaths = {
+    val modeDir = mode match {
+      case BuildMode.Synthesis  => "synthesis"
+      case BuildMode.Simulation => "simulation"
+    }
+    val root = os.pwd / "target" / "beethoven-local" / name
+    BeethovenPaths(
+      bindingRoot = root / "binding",
+      rtlRoot = root / modeDir,
+      cacheRoot = root / ".cache",
+      beethovenHardwareRoot = None
+    )
+  }
+
   // -- private helpers -------------------------------------------------------
 
   private def parseProject(t: TomlParseResult): ProjectSection = {
