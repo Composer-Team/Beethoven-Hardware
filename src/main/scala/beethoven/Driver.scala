@@ -164,7 +164,8 @@ object BeethovenBuild {
         FirtoolOption(
           "--lowering-options=locationInfoStyle=wrapInAtSquareBracket," +
             "mitigateVivadoArrayIndexConstPropBug,locationInfoStyle=wrapInAtSquareBracket," +
-            "disallowLocalVariables"
+            "disallowLocalVariables," +
+            "disallowPackedStructAssignments" // necessary for iverilog
         )
         ,FirtoolOption("-O=debug")
       )
