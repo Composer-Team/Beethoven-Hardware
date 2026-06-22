@@ -11,8 +11,25 @@ import firrtl.stage._
 import firrtl._
 import firrtl._
 
+case class AcceleratorSystemConfigList(l: List[Parameters => AcceleratorSystemConfig]) {
+    def ++(r: AcceleratorSystemConfigList): AcceleratorSystemConfigList = {
+      AcceleratorSystemConfigList(this.l ++ r.l)
+    }
+}
+
+object AcceleratorSystemConfigList {
+  implicit def render(a: AcceleratorSystemConfigList)(implicit p: Parameters): List[AcceleratorSystemConfig] = {
+    a.l.map(_(p))
+  }
+
+  implicit def fromList(l: List[Parameters => AcceleratorSystemConfig]): AcceleratorSystemConfigList = {
+    AcceleratorSystemConfigList(l)
+  }
+
+}
+
 // Beethoven-system parameters
-case object AcceleratorSystems extends Field[List[AcceleratorSystemConfig]]
+case object AcceleratorSystems extends Field[AcceleratorSystemConfigList]
 
 case object DRAMBankBytes extends Field[Int]
 

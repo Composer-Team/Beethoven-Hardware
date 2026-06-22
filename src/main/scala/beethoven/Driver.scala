@@ -141,7 +141,7 @@ object BeethovenBuild {
     val configWithBuildMode = {
       val w = new WithBeethoven(platform = platform).alterPartial {
         case BuildModeKey       => buildMode
-        case AcceleratorSystems => config.configs
+        case AcceleratorSystems => config.config_lambda
       }
       additional_parameter match {
         case Some(f) => w.alterPartial(f)
@@ -183,7 +183,7 @@ object BeethovenBuild {
     val shifts = allChiselGeneratedSrcs.filter(a =>
       a.toString().contains("ShiftReg") || a.toString().contains("Queue")
     )
-    config.configs.foreach { conf =>
+    config.config_lambda.l.map(_(configWithBuildMode)).foreach { conf =>
       conf.moduleConstructor match {
         case a: BlackboxBuilderCustom =>
           a.externalDependencies.getOrElse(Seq()).foreach { path =>

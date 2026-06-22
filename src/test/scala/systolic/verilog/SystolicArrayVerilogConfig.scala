@@ -9,23 +9,26 @@ import systolic.Constants.int_bits
 import systolic.Constants.frac_bits
 import beethoven.Generation.CppGeneration
 import beethovenTest.TestPaths
+import beethoven.common.Address
+import org.chipsalliance.cde.config.Parameters
 
-class SystolicArrayCmd extends AccelCommand("matmul") {
-  val wgt_addr = UInt(64.W)
-  val act_addr = UInt(64.W)
-  val out_addr = UInt(64.W)
+class SystolicArrayCmd(implicit p: Parameters) extends AccelCommand("matmul") {
+  val wgt_addr = Address()
+  val act_addr = Address()
+  val out_addr = Address()
   val inner_dimension = UInt(20.W)
 }
 
 class SystolicArrayConfig(nCores: Int)
     extends AcceleratorConfig(
+      (p: Parameters) => 
       AcceleratorSystemConfig(
         nCores = nCores,
         name = "SystolicArrayCore",
         moduleConstructor = new BlackboxBuilderCustom(
           Seq(
             BeethovenIOInterface(
-              new SystolicArrayCmd,
+              new SystolicArrayCmd()(p),
               EmptyAccelResponse()
             )
           ),
