@@ -185,7 +185,6 @@ object Shell {
          |    logic                     bvalid  ;
          |  endinterface;
          |
-         |  `include "/home/ubuntu/aws-fpga/hdk/common/lib/interfaces.sv"
          |  //----------------------------
          |  // Internal interfaces
          |  //----------------------------
